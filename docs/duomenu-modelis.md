@@ -134,3 +134,11 @@ Svarbiausi laukai:
 Ryšiai: user_id susietas su profiles.id.
 
 Prieinamumas: paraišką mato jos autorius ir administratorius. Tik administratorius gali ją patvirtinti arba atmesti. Patvirtinus paraišką, vartotojo profilis įgyja shelter rolę.
+
+# Test diagram
+
+```mermaid
+erDiagram
+    USER ||--o{ PET : owns
+    PET ||--o{ REQUEST : receives
+```
