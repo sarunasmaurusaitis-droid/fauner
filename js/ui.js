@@ -1,5 +1,5 @@
 // Pakartotinai naudojami formos elementai: pasirinkimas iš sąrašo su paieška, dvigubas slankiklis
-import { esc, $, $$, icon } from './app.js?v=10';
+import { esc, $, $$, icon } from './app.js?v=11';
 
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 

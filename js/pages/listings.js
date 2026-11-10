@@ -1,10 +1,10 @@
 // Skelbimai: skydelis / mano skelbimai, naujo skelbimo forma (4 žingsniai), redagavimas (vienas puslapis), kandidatai
-import { api } from '../api.js?v=10';
+import { api } from '../api.js?v=11';
 import { esc, $, $$, icon, go, back, toast, ageText, ageMonths, birthFrom, breedText, statusChip, photo, requireLogin,
-  confirmDialog, timeAgo, initial, isAdmin, plural } from '../app.js?v=10';
-import { reqChip } from './requests.js?v=10';
-import { CITIES, BREEDS, SPECIES, TRAITS, HEALTH, UNKNOWN_BREED, PHONE_RE, saleWords } from '../data.js?v=10';
-import { combo } from '../ui.js?v=10';
+  confirmDialog, timeAgo, initial, isAdmin, plural } from '../app.js?v=11';
+import { reqChip, requestDetailsHtml } from './requests.js?v=11';
+import { CITIES, BREEDS, SPECIES, TRAITS, HEALTH, UNKNOWN_BREED, PHONE_RE, saleWords } from '../data.js?v=11';
+import { combo } from '../ui.js?v=11';
 
 const STATUSES = ['Laukia namų', 'Rezervuotas', 'Rado namus'];
 const stClass = s => s === 'Laukia namų' ? 'st-wait' : s === 'Rezervuotas' ? 'st-res' : 'st-home';
@@ -308,8 +308,8 @@ export async function renderCandidates(box, id) {
   const card = (r, i) => `
     <div class="panel cand">
       <div class="row between"><div class="row gap-s"><span class="avatar soft">${esc(initial(r.full_name))}</span><div><b>${i != null ? `${i + 1}. ` : ''}${esc(r.full_name)}</b><span class="sub block">${esc(r.city || '')} · ${timeAgo(r.created_at)}</span></div></div>${reqChip(r.status, r.queued)}</div>
-      <div class="pills"><span class="pill static">${esc(r.housing || '—')}</span><span class="pill static">${r.has_pets ? 'Turi kitų gyvūnų' : 'Be kitų gyvūnų'}</span>${r.phone ? `<span class="pill static">${esc(r.phone)}</span>` : ''}</div>
-      <p class="quote">„${esc(r.motivation)}“</p>
+      ${r.housing ? `<div class="pills"><span class="pill static">${esc(r.housing)}</span><span class="pill static">${r.has_pets ? 'Turi kitų gyvūnų' : 'Neturi kitų gyvūnų'}</span>${r.phone ? `<span class="pill static">${esc(r.phone)}</span>` : ''}</div>` : ''}
+      ${requestDetailsHtml(r)}
       <div class="row gap"><a class="btn ghost grow" href="#/zinutes/${r.id}">Rašyti</a>
       ${['Atmesta', 'Atšaukta'].includes(r.status) ? '' : r.status !== 'Pasirinktas' ? `<button class="btn primary grow" data-pick="${r.id}">Pasirinkti</button>` : `<span class="chip st-wait">Pasirinktas</span>`}</div>
     </div>`;

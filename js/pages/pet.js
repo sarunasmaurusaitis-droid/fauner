@@ -1,8 +1,8 @@
 // Gyvūno profilis, prieglaudos puslapis, išsaugoti gyvūnai, pranešimas apie skelbimą
-import { api } from '../api.js?v=10';
+import { api } from '../api.js?v=11';
 import { esc, $, $$, icon, go, back, toast, ageText, breedText, statusChip, ownerName, isVerified, photo, heartBtn, bindHearts,
-  favs, requireLogin, confirmDialog, initial, petCard, isAdmin, plural } from '../app.js?v=10';
-import { REPORT_REASONS } from '../data.js?v=10';
+  favs, requireLogin, confirmDialog, initial, petCard, isAdmin, plural } from '../app.js?v=11';
+import { REPORT_REASONS } from '../data.js?v=11';
 
 export async function render(box, id) {
   const p = await api.getPet(id);
@@ -12,7 +12,8 @@ export async function render(box, id) {
   const photos = p.photos?.length ? p.photos : [photo(p)];
   const ver = isVerified(p);
   const myReq = u && !mine ? (await api.myRequests()).find(r => r.pet_id === p.id && r.status !== 'Atšaukta') : null;
-  const ownerKind = p.owner?.role === 'shelter' ? (ver ? 'prieglauda' : 'prieglauda') : 'globėjas';
+  const shelterOwner = p.owner?.role === 'shelter';
+  const ownerKind = shelterOwner ? 'prieglauda' : 'globėjas';
 
   let action;
   if (mine) action = `
@@ -25,7 +26,7 @@ export async function render(box, id) {
   else if (p.status === 'Rezervuotas') action = `<button class="btn primary block" id="adopt">Stoti į eilę</button>
     <p class="sub center small">Gyvūnas rezervuotas. Jei su dabartiniais kandidatais nepavyks, ${ownerKind} susisieks su eilėje esančiais.</p>`;
   else action = `<button class="btn primary block" id="adopt">Noriu priglausti</button>
-    <p class="sub center small">Užpildysi trumpą klausimyną, ${ownerKind} atsakys žinutėse.</p>`;
+    <p class="sub center small">${shelterOwner ? 'Užpildysi trumpą klausimyną' : 'Parašysi trumpą žinutę'}, ${ownerKind} atsakys žinutėse.</p>`;
 
   box.innerHTML = `
     <button class="back" data-back>${icon('back')} Atgal</button>

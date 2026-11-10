@@ -1,8 +1,8 @@
 // Paskyra: prisijungimas, registracija (18+), Google/Facebook, slaptažodžio atkūrimas, profilis, prieglaudos paraiška
-import { api, DEMO } from '../api.js?v=10';
-import { esc, $, $$, icon, go, toast, confirmDialog, requireLogin, initial, isAdmin } from '../app.js?v=10';
-import { CITIES } from '../data.js?v=10';
-import { combo } from '../ui.js?v=10';
+import { api, DEMO } from '../api.js?v=11';
+import { esc, $, $$, icon, go, toast, confirmDialog, requireLogin, initial, isAdmin } from '../app.js?v=11';
+import { CITIES } from '../data.js?v=11';
+import { combo } from '../ui.js?v=11';
 
 const ROLE_NAME = { user: 'Vartotojas', shelter: 'Prieglauda', admin: 'Administratorius' };
 const HERO = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=900&q=80';

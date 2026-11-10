@@ -1,12 +1,12 @@
 // Fauner – maršrutizatorius, išdėstymas ir bendros pagalbinės funkcijos
-import { api, DEMO } from './api.js?v=10';
-import * as search from './pages/search.js?v=10';
-import * as pet from './pages/pet.js?v=10';
-import * as requests from './pages/requests.js?v=10';
-import * as listings from './pages/listings.js?v=10';
-import * as admin from './pages/admin.js?v=10';
-import * as account from './pages/account.js?v=10';
-import * as info from './pages/info.js?v=10';
+import { api, DEMO } from './api.js?v=11';
+import * as search from './pages/search.js?v=11';
+import * as pet from './pages/pet.js?v=11';
+import * as requests from './pages/requests.js?v=11';
+import * as listings from './pages/listings.js?v=11';
+import * as admin from './pages/admin.js?v=11';
+import * as account from './pages/account.js?v=11';
+import * as info from './pages/info.js?v=11';
 
 // ---------- Pagalbinės funkcijos ----------
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

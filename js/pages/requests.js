@@ -1,6 +1,6 @@
 // Užklausa priglausti, žinutės ir pokalbis
-import { api } from '../api.js?v=10';
-import { esc, $, $$, icon, go, back, toast, ageText, breedText, ownerName, photo, requireLogin, timeAgo, confirmDialog, after, unread } from '../app.js?v=10';
+import { api } from '../api.js?v=11';
+import { esc, $, $$, icon, go, back, toast, ageText, breedText, ownerName, photo, requireLogin, timeAgo, confirmDialog, after, unread } from '../app.js?v=11';
 
 const REQ_CLASS = { 'Išsiųsta': 'st-gray', 'Peržiūrėta': 'st-res', 'Pakviestas susitikti': 'st-wait', 'Pasirinktas': 'st-wait', 'Atmesta': 'st-red', 'Atšaukta': 'st-gray' };
 export const reqChip = (s, queued) => `<span class="chip ${REQ_CLASS[s] || ''}">${esc(queued && ['Išsiųsta', 'Peržiūrėta'].includes(s) ? 'Eilėje' : s)}</span>`;
@@ -11,6 +11,23 @@ const petMini = p => `
     <div><b>${esc(p.name)}, ${ageText(p.birth_date)}</b><span class="sub">${esc(breedText(p))} · ${esc(ownerName(p))} · ${esc(p.city)}</span></div>
   </div>`;
 
+// Papildomi atsakymai saugomi esamame motivation lauke, todėl nereikia keisti DB schemos.
+// Šis skirtukas leidžia atskirai atvaizduoti motyvaciją ir kitus klausimus.
+const ANSWERS_SEPARATOR = '\n\n--- Papildomi atsakymai ---\n';
+
+export function requestDetailsHtml(r) {
+  const isShelter = r.pet?.owner?.role === 'shelter' || !!r.housing;
+  const raw = r.motivation || '';
+  if (!isShelter) return `<div class="request-answer"><b>Pradinė žinutė</b><p class="request-text">${esc(raw || 'Žinutė nepateikta.')}</p></div>`;
+
+  const [reason, extra] = raw.split(ANSWERS_SEPARATOR, 2);
+  return `<div class="request-answer">
+    <b>Kodėl nori priglausti?</b>
+    <p class="request-text">${esc(reason || 'Nenurodyta')}</p>
+    ${extra ? `<div class="request-extra">${esc(extra)}</div>` : ''}
+  </div>`;
+}
+
 export async function renderForm(box, petId) {
   if (!requireLogin('Prisijunk, kad galėtum išsiųsti užklausą')) return;
   const p = await api.getPet(petId);
@@ -20,42 +37,86 @@ export async function renderForm(box, petId) {
   const existing = (await api.myRequests()).find(r => r.pet_id === p.id && r.status !== 'Atšaukta');
   if (existing) { go(`zinutes/${existing.id}`); return; }
   if (p.status === 'Rado namus' || (p.status === 'Rezervuotas' && !p.queue_open)) { go(`gyvunas/${p.id}`); return; }
+
   const queued = p.status === 'Rezervuotas';
-  const who = p.owner?.role === 'shelter' ? 'prieglaudai' : 'globėjui';
+  const isShelter = p.owner?.role === 'shelter';
+  const options = arr => arr.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
   box.innerHTML = `
     <div class="narrow">
       <button class="back" data-back>${icon('back')} ${queued ? 'Stoti į eilę' : 'Užklausa priglausti'}</button>
       ${petMini(p)}
-      ${queued ? `<div class="notice">Gyvūnas šiuo metu rezervuotas. Užklausa bus įrašyta į eilę – jei nepavyks su dabartiniais kandidatais, ${p.owner?.role === 'shelter' ? 'prieglauda' : 'globėjas'} susisieks su tavimi.</div>` : ''}
+      ${queued ? `<div class="notice">Gyvūnas šiuo metu rezervuotas. Užklausa bus įrašyta į eilę – jei nepavyks su dabartiniais kandidatais, ${isShelter ? 'prieglauda' : 'globėjas'} susisieks su tavimi.</div>` : ''}
       <form class="form" id="f">
-        <label>Vardas, pavardė<input class="input" name="full_name" required value="${esc(u.name)}"></label>
-        <div class="two">
-          <label>Telefonas <span class="opt">(nebūtina)</span><input class="input" name="phone" type="tel" placeholder="+370 6xx xxxxx"></label>
-          <label>Miestas<input class="input" name="city" required value="${esc(u.city || '')}"></label>
-        </div>
-        <label>Kur gyveni?</label>
-        <div class="pills" data-radio="housing">${['Butas', 'Namas su kiemu', 'Kita'].map((v, i) => `<button type="button" class="pill ${i ? '' : 'on'}" data-v="${v}">${v}</button>`).join('')}</div>
-        <label>Ar turi kitų gyvūnų?</label>
-        <div class="pills" data-radio="has_pets">${['Taip', 'Ne'].map(v => `<button type="button" class="pill ${v === 'Ne' ? 'on' : ''}" data-v="${v}">${v}</button>`).join('')}</div>
-        <label>Kodėl nori jį priglausti?<textarea class="input" name="motivation" rows="4" required placeholder="Papasakok apie save, savo kasdienybę ir patirtį su gyvūnais"></textarea></label>
-        <p class="sub small">Klausimynas padeda ${who} greičiau atsakyti. Tavo kontaktai matomi tik ${p.owner?.role === 'shelter' ? 'šiai prieglaudai' : 'šiam globėjui'}.</p>
+        ${isShelter ? `
+          <h2>Prieglaudos klausimynas</h2>
+          <p class="sub">Prieglauda prašo šios informacijos, kad galėtų įvertinti, ar gyvūnui tiks būsimi namai. Atsakymus matys skelbimo prieglauda.</p>
+          <label>Vardas, pavardė<input class="input" name="full_name" required maxlength="120" value="${esc(u.name || '')}"></label>
+          <div class="two">
+            <label>Telefonas <span class="opt">(nebūtina)</span><input class="input" name="phone" type="tel" maxlength="40" placeholder="+370 6xx xxxxx"></label>
+            <label>Miestas<input class="input" name="city" required maxlength="120" value="${esc(u.city || '')}"></label>
+          </div>
+          <label>Kur gyvens gyvūnas?
+            <select class="input" name="housing" required><option value="">Pasirink</option>${options(['Butas', 'Namas su kiemu', 'Namas be kiemo', 'Kita'])}</select>
+          </label>
+          <label>Ar gyvenamojoje vietoje leidžiama laikyti gyvūną?
+            <select class="input" name="permission" required><option value="">Pasirink</option>${options(['Taip', 'Ne', 'Nežinau'])}</select>
+          </label>
+          <label>Ar turi kitų augintinių?
+            <select class="input" name="has_pets" required><option value="">Pasirink</option>${options(['Taip', 'Ne'])}</select>
+          </label>
+          <label>Kiek laiko per dieną gyvūnas paprastai būtų vienas?
+            <select class="input" name="alone" required><option value="">Pasirink</option>${options(['0–2 val.', '3–5 val.', '6–8 val.', 'Daugiau nei 8 val.'])}</select>
+          </label>
+          <label>Ar turi patirties prižiūrint gyvūnus?
+            <select class="input" name="experience" required><option value="">Pasirink</option>${options(['Taip', 'Ne'])}</select>
+          </label>
+          <label>Kodėl nori priglausti šį gyvūną?
+            <textarea class="input" name="motivation" rows="4" required minlength="10" maxlength="1500" placeholder="Trumpai papasakok apie save ir kodėl pasirinkai šį gyvūną"></textarea>
+          </label>
+          <label>Papildoma informacija <span class="opt">(nebūtina)</span>
+            <textarea class="input" name="notes" rows="3" maxlength="1000" placeholder="Ką dar prieglaudai būtų svarbu žinoti?"></textarea>
+          </label>
+          <p class="sub small">Pateiktą informaciją matys tik su šiuo gyvūnu susijusi prieglauda. Nepateik slaptažodžių ar asmens dokumentų numerių.</p>`
+        : `
+          <h2>Žinutė globėjui</h2>
+          <p class="sub">Parašyk trumpą žinutę apie save ir kodėl norėtum priglausti ${esc(p.name)}. Jokio papildomo klausimyno nereikia.</p>
+          <label>Jūsų žinutė
+            <textarea class="input" name="message" rows="5" required minlength="5" maxlength="2000" placeholder="Sveiki, norėčiau priglausti ${esc(p.name)}. Norėčiau sužinoti…"></textarea>
+          </label>
+          <p class="sub small">Žinutę matys tik šio gyvūno globėjas. Galėsite tęsti pokalbį skiltyje „Žinutės“.</p>`}
         <button class="btn primary block" type="submit">${queued ? 'Stoti į eilę' : 'Siųsti užklausą'}</button>
       </form>
     </div>`;
   $('[data-back]', box).onclick = () => back(`gyvunas/${p.id}`);
-  $$('[data-radio]', box).forEach(g => $$('.pill', g).forEach(b => b.onclick = () => { $$('.pill', g).forEach(x => x.classList.toggle('on', x === b)); }));
   $('#f', box).onsubmit = async e => {
     e.preventDefault();
-    const f = new FormData(e.target);
-    const btn = e.submitter; btn.disabled = true;
+    const f = new FormData(e.currentTarget);
+    const btn = e.submitter || e.currentTarget.querySelector('[type=submit]');
+    if (btn) btn.disabled = true;
     try {
+      const motivation = isShelter
+        ? `${String(f.get('motivation') || '').trim()}${ANSWERS_SEPARATOR}${[
+            `Leidžiama laikyti gyvūnus: ${f.get('permission')}`,
+            `Vienas namuose: ${f.get('alone')}`,
+            `Patirtis: ${f.get('experience')}`,
+            ...(String(f.get('notes') || '').trim() ? [`Papildoma informacija: ${String(f.get('notes')).trim()}`] : []),
+          ].join('\n')}`
+        : String(f.get('message') || '').trim();
+      if (!motivation.trim() || (isShelter && !String(f.get('full_name') || '').trim())) {
+        throw new Error('Užpildyk privalomus formos laukus');
+      }
       const r = await api.createRequest({
-        pet_id: p.id, full_name: f.get('full_name'), phone: f.get('phone'), city: f.get('city'), queued,
-        housing: $('[data-radio=housing] .on', box).dataset.v, has_pets: $('[data-radio=has_pets] .on', box).dataset.v === 'Taip',
-        motivation: f.get('motivation'),
+        pet_id: p.id,
+        queued,
+        full_name: isShelter ? String(f.get('full_name') || '').trim() : (u.name || 'Vartotojas').trim(),
+        phone: isShelter ? String(f.get('phone') || '').trim() : '',
+        city: isShelter ? String(f.get('city') || '').trim() : (u.city || ''),
+        housing: isShelter ? String(f.get('housing') || '') : '',
+        has_pets: isShelter && f.get('has_pets') === 'Taip',
+        motivation,
       });
       go(`gyvunas/${p.id}/issiusta/${r.id}`);
-    } catch (err) { btn.disabled = false; toast(err.message, 'err'); }
+    } catch (err) { if (btn) btn.disabled = false; toast(err.message, 'err'); }
   };
 }
 
@@ -142,8 +203,9 @@ export async function renderChat(box, reqId) {
 
   const sys = async text => api.sendMessage(r.id, text, 'system');
   function drawInfo() {
-    const q = `<div class="q-sum"><span>${esc(r.housing || '—')}</span><span>${r.has_pets ? 'Turi kitų gyvūnų' : 'Be kitų gyvūnų'}</span><span>${esc(r.city || '')}</span></div>
-      <p class="quote">„${esc(r.motivation)}“</p>`;
+    const hasQuestionnaire = !!r.housing;
+    const q = `${hasQuestionnaire ? `<div class="q-sum"><span>${esc(r.housing)}</span><span>${r.has_pets ? 'Turi kitų gyvūnų' : 'Neturi kitų gyvūnų'}</span>${r.city ? `<span>${esc(r.city)}</span>` : ''}</div>` : ''}
+      ${requestDetailsHtml(r)}`;
     $('#info', box).innerHTML = isOwner ? `
       <details class="panel tight" ${closed ? '' : 'open'}>
         <summary class="row between"><b>${esc(r.full_name)}${r.phone ? ' · ' + esc(r.phone) : ''}</b>${reqChip(r.status, r.queued)}</summary>
@@ -156,6 +218,7 @@ export async function renderChat(box, reqId) {
         </div>`}
       </details>` : `
       <div class="row between status-line"><span class="sub">Užklausos būsena</span>${reqChip(r.status, r.queued)}</div>
+      <details class="request-sent-info"><summary class="link small">${hasQuestionnaire ? 'Peržiūrėti savo atsakymus' : 'Peržiūrėti išsiųstą žinutę'}</summary>${q}</details>
       ${!closed && r.status !== 'Pasirinktas' ? `<button class="link small" data-cancel>Atšaukti užklausą</button>` : ''}`;
     $$('[data-st]', box).forEach(b => b.onclick = async () => {
       const st = b.dataset.st;
@@ -188,7 +251,7 @@ export async function renderChat(box, reqId) {
     if (msgs.length === shown) return;
     shown = msgs.length;
     const el = $('#msgs', box);
-    el.innerHTML = `<div class="sys">${r.queued ? 'Įrašyta į eilę' : 'Užklausa išsiųsta'} · klausimynas pridėtas · ${timeAgo(r.created_at)}</div>` +
+    el.innerHTML = `<div class="sys">${r.queued ? 'Įrašyta į eilę' : 'Užklausa išsiųsta'} · ${r.housing ? 'klausimynas pridėtas' : 'žinutė pridėta'} · ${timeAgo(r.created_at)}</div>` +
       msgs.map(m => m.kind === 'system' ? `<div class="sys">${esc(m.body)} · ${timeAgo(m.created_at)}</div>`
         : `<div class="msg ${m.sender_id === u.id ? 'me' : ''}"><p>${esc(m.body)}</p><span>${timeAgo(m.created_at)}</span></div>`).join('');
     el.scrollTop = el.scrollHeight;
