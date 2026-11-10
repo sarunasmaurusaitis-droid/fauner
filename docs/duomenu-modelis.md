@@ -239,16 +239,48 @@ erDiagram
     }
 ```
 
-Ryšių paaiškinimas
-Ryšys	Tipas	Paaiškinimas
-Profiles –  Profile_private  1:1	Kiekvienam profiliui gali priklausyti vienas privatus įrašas
-Profiles – Pets	           1:N	Vienas vartotojas gali sukurti daug gyvūnų skelbimų
-Profiles – Favorites	        1:N	Vartotojas gali išsaugoti daug gyvūnų
-Pets – Favorites	           1:N	Vieną gyvūną gali išsaugoti daug vartotojų
-Profiles – Requests	        1:N	Vartotojas gali pateikti daug užklausų
-Pets – Requests	           1:N	Vienas gyvūnas gali gauti daug užklausų
-Requests – Messages	        1:N	Viena užklausa gali turėti daug žinučių
-Profiles – Messages	        1:N	Vartotojas gali išsiųsti daug žinučių
-Profiles – Reports	        1:N	Vartotojas gali pateikti daug pranešimų
-Pets – Reports	              1:N	Vienas gyvūnas gali turėti daug pranešimų
-Profiles – Shelter_applications	1:N	Vartotojas gali pateikti daug prieglaudos paraiškų
+# Ryšių paaiškinimas
+
+Profiles –  Profile_private
+
+1:1	Kiekvienam profiliui gali priklausyti vienas privatus įrašas
+
+Profiles – Pets
+
+1:N	Vienas vartotojas gali sukurti daug gyvūnų skelbimų
+
+Profiles – Favorites
+
+1:N	Vartotojas gali išsaugoti daug gyvūnų
+
+Pets – Favorites	           
+
+1:N	Vieną gyvūną gali išsaugoti daug vartotojų
+
+Profiles – Requests	        
+
+1:N	Vartotojas gali pateikti daug užklausų
+
+Pets – Requests	 
+
+1:N	Vienas gyvūnas gali gauti daug užklausų
+
+Requests – Messages
+
+1:N	Viena užklausa gali turėti daug žinučių
+
+Profiles – Messages
+
+1:N	Vartotojas gali išsiųsti daug žinučių
+
+Profiles – Reports
+
+1:N	Vartotojas gali pateikti daug pranešimų
+
+Pets – Reports
+
+1:N	Vienas gyvūnas gali turėti daug pranešimų
+
+Profiles – Shelter_applications
+
+1:N	Vartotojas gali pateikti daug prieglaudos paraiškų
