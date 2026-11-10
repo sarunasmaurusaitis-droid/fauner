@@ -150,43 +150,32 @@ Ryšiai: user_id susietas su profiles.id.
 
 Prieinamumas: paraišką mato jos autorius ir administratorius. Tik administratorius gali ją patvirtinti arba atmesti. Patvirtinus paraišką, vartotojo profilis įgyja shelter rolę.
 
+
+
 # Fauner – Duomenų bazės ER diagrama
 
-```
-mermaid
+```mermaid
 erDiagram
-
-    profiles ||--o| profile_private : turi
-    profiles ||--o{ pets : augina
-    profiles ||--o{ favorites : issisaugojo
-    pets ||--o{ favorites : issaugota
-
-    profiles ||--o{ requests : issiusti
-    pets ||--o{ requests : gauti
-
-    requests ||--o{ messages : talpina
-    profiles ||--o{ messages : siuncia
-
-    profiles o|--o{ reports : nusiuncia
-    pets ||--o{ reports : gauna
-
-    profiles ||--o{ shelter_applications : nusiuncia
+    profiles ||--o| profile_private : has
+    profiles ||--o{ pets : owns
+    profiles ||--o{ favorites : saves
+    pets ||--o{ favorites : is_saved
+    profiles ||--o{ requests : submits
+    pets ||--o{ requests : receives
+    requests ||--o{ messages : contains
+    profiles ||--o{ messages : sends
+    profiles o|--o{ reports : submits
+    pets ||--o{ reports : receives
+    profiles ||--o{ shelter_applications : submits
 
     profiles {
         uuid id PK
         text name
         text role
         text city
-        text shelter_name
         boolean verified
         boolean banned
         boolean onboarded
-        text avatar_url
-        text phone
-        text website
-        text address
-        text about
-        timestamptz created_at
     }
 
     profile_private {
@@ -197,26 +186,16 @@ erDiagram
     pets {
         bigint id PK
         uuid owner_id FK
-        text org_name
         text name
         text species
         text breed
-        boolean mixed
         date birth_date
         text sex
         text city
-        text description
-        text_array traits
-        text_array health
-        text_array photos
         text status
         boolean hidden
         boolean archived
-        boolean queue_open
         text review_status
-        text review_reason
-        timestamptz created_at
-        timestamptz updated_at
     }
 
     favorites {
@@ -231,15 +210,8 @@ erDiagram
         uuid seeker_id FK
         text full_name
         text phone
-        text city
-        text housing
-        boolean has_pets
-        text motivation
         text status
         boolean queued
-        timestamptz seeker_read_at
-        timestamptz owner_read_at
-        timestamptz created_at
     }
 
     messages {
@@ -248,7 +220,6 @@ erDiagram
         uuid sender_id FK
         text body
         text kind
-        timestamptz created_at
     }
 
     reports {
@@ -256,28 +227,16 @@ erDiagram
         bigint pet_id FK
         uuid reporter_id FK
         text reason
-        text details
         text status
-        timestamptz created_at
     }
 
     shelter_applications {
         bigint id PK
         uuid user_id FK
         text org_name
-        text legal_form
         text company_code
-        text vmvt_ref
-        text address
-        text city
-        text contact_person
-        text phone
-        text email
-        text website
-        text about
-        text_array docs
         text status
-        text admin_note
-        timestamptz created_at
     }
 ```
+
+
