@@ -1,7 +1,7 @@
 // Demonstracinis režimas: tas pats API kaip api.js, bet duomenys laikomi naršyklės localStorage.
 // Naudojamas, kol config.js neįrašyti Supabase raktai. Demo paskyros: žr. README.
-import { compressImage } from './image.js?v=10';
-import { saleWords } from './data.js?v=10';
+import { compressImage } from './image.js?v=11';
+import { saleWords } from './data.js?v=11';
 
 const KEY = 'fauner-demo-v3';
 const U = id => `https://images.unsplash.com/photo-${id}?w=900&q=80`;

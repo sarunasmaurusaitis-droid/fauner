@@ -1,8 +1,8 @@
 // Paieška ir filtrai (filtrai saugomi nuorodoje, todėl jais galima pasidalinti)
-import { api } from '../api.js?v=10';
-import { esc, $, $$, icon, petCard, bindHearts, ageMonths, plural } from '../app.js?v=10';
-import { CITIES, BREEDS, SPECIES, SPECIES_PLURAL } from '../data.js?v=10';
-import { combo, dualRange } from '../ui.js?v=10';
+import { api } from '../api.js?v=11';
+import { esc, $, $$, icon, petCard, bindHearts, ageMonths, plural } from '../app.js?v=11';
+import { CITIES, BREEDS, SPECIES, SPECIES_PLURAL } from '../data.js?v=11';
+import { combo, dualRange } from '../ui.js?v=11';
 
 const QUICK = [['', 'Visi'], ...SPECIES.map(s => [s, SPECIES_PLURAL[s]])];
 const AGE_MAX = 20;

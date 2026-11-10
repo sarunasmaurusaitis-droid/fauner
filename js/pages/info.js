@@ -1,6 +1,6 @@
 // Informaciniai puslapiai: Apie Fauner + DUK, taisyklės, privatumo politika, kontaktai, pirmo apsilankymo gidas
-import { esc, $, $$, icon, go } from '../app.js?v=10';
-import { CONTACT_EMAIL } from '../config.js?v=10';
+import { esc, $, $$, icon, go } from '../app.js?v=11';
+import { CONTACT_EMAIL } from '../config.js?v=11';
 
 const UPDATED = '2026-11-03';
 const email = () => CONTACT_EMAIL ? `<a class="link" href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>` : 'per skiltį „Kontaktai“';

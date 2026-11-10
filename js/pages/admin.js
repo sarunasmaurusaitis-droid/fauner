@@ -1,6 +1,6 @@
 // Administravimas: tikrinami skelbimai, pranešimai, prieglaudų paraiškos, vartotojai, visi skelbimai
-import { api } from '../api.js?v=10';
-import { esc, $, $$, icon, go, toast, photo, timeAgo, ownerName, confirmDialog, promptDialog, requireLogin, isAdmin, ageText, breedText, statusChip, initial, plural } from '../app.js?v=10';
+import { api } from '../api.js?v=11';
+import { esc, $, $$, icon, go, toast, photo, timeAgo, ownerName, confirmDialog, promptDialog, requireLogin, isAdmin, ageText, breedText, statusChip, initial, plural } from '../app.js?v=11';
 
 const TABS = [['tikrinimas', 'Tikrinami skelbimai'], ['pranesimai', 'Pranešimai'], ['paraiskos', 'Prieglaudų paraiškos'], ['vartotojai', 'Vartotojai'], ['skelbimai', 'Visi skelbimai']];
 const ROLE = { user: 'Vartotojas', shelter: 'Prieglauda', admin: 'Administratorius' };
