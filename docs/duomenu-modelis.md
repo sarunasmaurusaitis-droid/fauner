@@ -156,17 +156,17 @@ Prieinamumas: paraišką mato jos autorius ir administratorius. Tik administrato
 
 ```mermaid
 erDiagram
-    profiles ||--o| profile_private : has
-    profiles ||--o{ pets : owns
-    profiles ||--o{ favorites : saves
-    pets ||--o{ favorites : is_saved
-    profiles ||--o{ requests : submits
-    pets ||--o{ requests : receives
-    requests ||--o{ messages : contains
-    profiles ||--o{ messages : sends
-    profiles o|--o{ reports : submits
-    pets ||--o{ reports : receives
-    profiles ||--o{ shelter_applications : submits
+    profiles ||--o| profile_private : turi
+    profiles ||--o{ pets : augina
+    profiles ||--o{ favorites : issisaugojo
+    pets ||--o{ favorites : issaugoti
+    profiles ||--o{ requests : nusiuncia
+    pets ||--o{ requests : gauna
+    requests ||--o{ messages : turi
+    profiles ||--o{ messages : siuncia
+    profiles o|--o{ reports : nusiuncia
+    pets ||--o{ reports : gauna
+    profiles ||--o{ shelter_applications : nusiuncia
 
     profiles {
         uuid id PK
