@@ -138,7 +138,7 @@ export async function renderContacts(box) {
       <h1>Kontaktai</h1>
       <p>Fauner – KTU studentų projektas (modulis T120B207, grupė 01-2).</p>
       <p>Komanda: Ainė Matulevičiūtė, Ignas Onaitis, Deividas Paulauskis, Šarūnas Maurušaitis, Edvinas Žilaitis.</p>
-      <p>El. paštas: ${CONTACT_EMAIL ? email() : '<span class="sub">bus paskelbtas netrukus</span>'}</p>
+      <p>El. paštas: ${CONTACT_EMAIL ? email() : '<span class="sub">teamfauner@gmail.com</span>'}</p>
       <p>Pastebėjai netinkamą skelbimą? Naudok mygtuką „Pranešti apie skelbimą“ gyvūno profilyje – taip jis greičiausiai pasieks administratorių.</p>
       <p>Įtari žiaurų elgesį su gyvūnu? Kreipkis į Valstybinę maisto ir veterinarijos tarnybą (<a class="link" href="https://vmvt.lrv.lt" target="_blank" rel="noopener">vmvt.lrv.lt</a>) arba skambink 112.</p>
     </article>`;
