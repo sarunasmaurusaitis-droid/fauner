@@ -1,7 +1,7 @@
 // Demonstracinis režimas: tas pats API kaip api.js, bet duomenys laikomi naršyklės localStorage.
 // Naudojamas, kol config.js neįrašyti Supabase raktai. Demo paskyros: žr. README.
-import { compressImage } from './image.js?v=11';
-import { saleWords } from './data.js?v=11';
+import { compressImage } from './image.js?v=12';
+import { saleWords } from './data.js?v=12';
 
 const KEY = 'fauner-demo-v3';
 const U = id => `https://images.unsplash.com/photo-${id}?w=900&q=80`;
@@ -49,7 +49,8 @@ function seed() {
   const reports = [{ id: 1, pet_id: 8, reporter_id: 'u-gabija', reason: 'Netinkamos nuotraukos ar tekstas', details: '', status: 'Nauja', created_at: daysAgo(0.05) }];
   const applications = [{ id: 1, user_id: 'u-jonas', org_name: 'Kauno letenos', legal_form: 'Juridinis asmuo', company_code: '123456789', vmvt_ref: 'GG-123', address: 'Savanorių pr. 1, Kaunas', city: 'Kaunas', contact_person: 'Jonas Jonaitis', phone: '+370 600 00003', email: 'info@kaunoletenos.lt', website: 'https://facebook.com/kaunoletenos', about: 'Globojame kates Kaune.', docs: [], status: 'Laukia', admin_note: '', created_at: daysAgo(0.5) }];
   const birth = Object.fromEntries(users.map(u => [u.id, '1995-05-05']));
-  return { birth, users, pets, favorites: [{ user_id: 'u-gabija', pet_id: 1 }], requests, messages, reports, applications, session: null, seq: 100 };
+  return { birth, users, pets, favorites: [{ user_id: 'u-gabija', pet_id: 1 }], requests, messages, reports, applications,
+    donationRequests: [], session: null, seq: 100 };
 }
 
 function checkPet(d) {
@@ -142,6 +143,38 @@ export function createDemoApi() {
       db.users = db.users.filter(x => x.id !== u.id); db.session = null; save(); emit();
     },
     async getProfile(id) { const u = db.users.find(x => x.id === id); return wait(u ? { ...pub(u), avatar_url: u.avatar_url || '', phone: u.phone || '', website: u.website || '', address: u.address || '', about: u.about || '' } : null); },
+
+    // ---------- Prieglaudų parama ----------
+    async myDonationRequest() {
+      const u = need();
+      return wait(clone((db.donationRequests || []).find(r => r.shelter_id === u.id) || null));
+    },
+    async submitDonationRequest(d) {
+      const u = active();
+      if (u.role !== 'shelter' || !u.verified) throw new Error('Paramą gali gauti tik patvirtinta prieglauda');
+      db.donationRequests ||= [];
+      const old = db.donationRequests.find(r => r.shelter_id === u.id);
+      if (old && old.status !== 'Atmesta') throw new Error('Paramos prašymas jau pateiktas arba patvirtintas');
+      const request = { id: old?.id || nid(), shelter_id: u.id, account_holder: d.account_holder.trim(), bank_name: d.bank_name.trim(),
+        iban: d.iban.replace(/\s+/g, '').toUpperCase(), instructions: (d.instructions || '').trim(), status: 'Laukia',
+        admin_note: '', created_at: now(), reviewed_at: null };
+      if (old) Object.assign(old, request); else db.donationRequests.push(request);
+      save(); return wait(clone(request));
+    },
+    async listDonationRequests() {
+      if (!isAdmin()) throw new Error('Tik administratorius');
+      return wait((db.donationRequests || []).slice().sort(byNew).map(r => ({ ...clone(r), shelter: pub(db.users.find(u => u.id === r.shelter_id)) })));
+    },
+    async decideDonationRequest(id, approve, note = '') {
+      if (!isAdmin()) throw new Error('Tik administratorius');
+      const r = (db.donationRequests || []).find(x => x.id === id);
+      if (!r || r.status !== 'Laukia') throw new Error('Prašymas nerastas arba jau peržiūrėtas');
+      r.status = approve ? 'Patvirtinta' : 'Atmesta'; r.admin_note = note; r.reviewed_at = now(); save(); return wait();
+    },
+    async approvedDonationInfo(shelterId) {
+      const r = (db.donationRequests || []).find(x => x.shelter_id === shelterId && x.status === 'Patvirtinta');
+      return wait(r ? { account_holder: r.account_holder, bank_name: r.bank_name, iban: r.iban, instructions: r.instructions } : null);
+    },
 
     async listPets() { return wait(db.pets.filter(p => !p.hidden && !p.archived && p.owner_id && p.review_status === 'ok').sort(byNew).map(withOwner)); },
     async petsByOwner(uid) { return wait(db.pets.filter(p => p.owner_id === uid && !p.hidden && !p.archived && p.review_status === 'ok').sort(byNew).map(withOwner)); },

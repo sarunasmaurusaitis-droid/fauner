@@ -1,8 +1,8 @@
 // Paskyra: prisijungimas, registracija (18+), Google/Facebook, slaptažodžio atkūrimas, profilis, prieglaudos paraiška
-import { api, DEMO } from '../api.js?v=11';
-import { esc, $, $$, icon, go, toast, confirmDialog, requireLogin, initial, isAdmin } from '../app.js?v=11';
-import { CITIES } from '../data.js?v=11';
-import { combo } from '../ui.js?v=11';
+import { api, DEMO } from '../api.js?v=12';
+import { esc, $, $$, icon, go, toast, confirmDialog, requireLogin, initial, isAdmin } from '../app.js?v=12';
+import { CITIES } from '../data.js?v=12';
+import { combo } from '../ui.js?v=12';
 
 const ROLE_NAME = { user: 'Vartotojas', shelter: 'Prieglauda', admin: 'Administratorius' };
 const HERO = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=900&q=80';
@@ -174,10 +174,30 @@ export async function renderNewPassword(box) {
   };
 }
 
+function donationProfilePanel(request, user) {
+  if (!user.verified) return `<div class="panel shelter-cta"><b>Paramos gavimas</b><p class="sub">Paramos prašymą gali pateikti tik administratoriaus patvirtinta prieglauda.</p></div>`;
+  if (request?.status === 'Patvirtinta') return `<div class="panel shelter-cta"><b>Paramos gavimas patvirtintas</b><p class="sub">Rekvizitai rodomi viešame prieglaudos profilyje. Juos galite peržiūrėti paspaudę žemiau.</p><a class="btn soft" href="#/prieglauda/${esc(user.id)}">Peržiūrėti prieglaudos profilį</a></div>`;
+  if (request?.status === 'Laukia') return `<div class="panel shelter-cta"><b>Paramos prašymas pateiktas</b><p class="sub">Administratorius jį peržiūrės per 3 darbo dienas. Pateikta: ${new Date(request.created_at).toLocaleDateString('lt-LT')}.</p></div>`;
+  return `<div class="panel shelter-cta">
+    <b>${request?.status === 'Atmesta' ? 'Paramos prašymas atmestas' : 'Norite gauti paramą?'}</b>
+    ${request?.status === 'Atmesta' ? `<p class="sub">${esc(request.admin_note || 'Galite patikslinti rekvizitus ir pateikti prašymą iš naujo.')}</p>` : '<p class="sub">Pateikite banko rekvizitus. Jie bus viešai rodomi tik administratoriui patvirtinus prašymą.</p>'}
+    <button class="btn soft" type="button" id="donation-start">Noriu gauti paramą</button>
+    <form class="form" id="donation-form" hidden>
+      <label>Sąskaitos savininkas<input class="input" name="account_holder" required maxlength="120" placeholder="VšĮ „Gyvūnų globa“"></label>
+      <label>Banko pavadinimas<input class="input" name="bank_name" required maxlength="80" placeholder="Swedbank"></label>
+      <label>IBAN sąskaitos numeris<input class="input" name="iban" required maxlength="34" autocomplete="off" placeholder="LT12 7300 0101 2345 6789"></label>
+      <label>Mokėjimo instrukcijos <span class="hint">Neprivaloma</span><textarea class="input" name="instructions" rows="3" maxlength="1000" placeholder="Pavedimo paskirtyje galite nurodyti…"></textarea></label>
+      <p class="hint">Patvirtinus prašymą, šie rekvizitai bus matomi viešame prieglaudos profilyje.</p>
+      <button class="btn primary block" type="submit">Pateikti administratoriui</button>
+    </form>
+  </div>`;
+}
+
 export async function renderProfile(box) {
   if (!requireLogin()) return;
   const u = api.user;
   const app = u.role === 'user' ? await api.myApplication().catch(() => null) : null;
+  const donationRequest = u.role === 'shelter' ? await api.myDonationRequest().catch(() => null) : null;
   const name = u.shelter_name || u.name || 'Profilis';
   box.innerHTML = `
     <div class="narrow">
@@ -201,6 +221,7 @@ export async function renderProfile(box) {
           : app.status === 'Laukia' ? `<b>Prieglaudos paraiška pateikta</b><p class="sub">„${esc(app.org_name)}“ – laukia administratoriaus patvirtinimo. Paprastai tai užtrunka 1–3 darbo dienas.</p>`
           : app.status === 'Atmesta' ? `<b>Paraiška atmesta</b><p class="sub">${esc(app.admin_note || 'Susisiek su administracija dėl priežasčių.')}</p><a class="btn soft" href="#/prieglaudos-paraiska">Pateikti iš naujo</a>` : ''}
       </div>` : ''}
+      ${u.role === 'shelter' ? donationProfilePanel(donationRequest, u) : ''}
       <form class="form panel" id="f">
         <h2>Mano duomenys</h2>
         <label>Vardas<input class="input" name="name" required maxlength="40" value="${esc(u.name)}"></label>
@@ -223,6 +244,18 @@ export async function renderProfile(box) {
       <button class="btn ghost block" id="out">${icon('out')} Atsijungti</button>
     </div>`;
   const city = combo($('#city', box), { options: CITIES, value: CITIES.includes(u.city) ? u.city : '', placeholder: 'Pasirink' });
+  const donationStart = $('#donation-start', box);
+  if (donationStart) donationStart.onclick = () => { $('#donation-form', box).hidden = false; donationStart.hidden = true; };
+  const donationForm = $('#donation-form', box);
+  if (donationForm) donationForm.onsubmit = async e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(e.target));
+    const iban = d.iban.replace(/\s+/g, '').toUpperCase();
+    if (!/^[A-Z]{2}[0-9A-Z]{13,32}$/.test(iban)) return toast('Patikrinkite IBAN numerį (be neteisingų simbolių)', 'err');
+    const btn = e.submitter; btn.disabled = true;
+    try { await api.submitDonationRequest({ ...d, iban }); toast('Paramos prašymas pateiktas administratoriui'); await renderProfile(box); }
+    catch (err) { btn.disabled = false; toast(err.message, 'err'); }
+  };
   $('#avatar', box).onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
     try { await api.uploadAvatar(f); toast('Nuotrauka atnaujinta'); renderProfile(box); } catch (er) { toast(er.message, 'err'); }

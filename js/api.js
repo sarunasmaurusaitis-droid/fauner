@@ -1,6 +1,6 @@
 // Duomenų sluoksnis. Jei config.js užpildytas – naudojama Supabase duomenų bazė,
 // jei ne – demonstracinis režimas (duomenys saugomi tik šioje naršyklėje).
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=11';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=12';
 
 export const DEMO = !SUPABASE_URL || !SUPABASE_ANON_KEY;
 
@@ -8,7 +8,7 @@ const OWNER = 'owner:profiles!pets_owner_id_fkey(id,name,role,shelter_name,verif
 const PET_SELECT = `*, ${OWNER}`;
 const REQ_SELECT = `*, pet:pets(${PET_SELECT}), seeker:profiles!requests_seeker_id_fkey(id,name,city,avatar_url)`;
 
-import { compressImage } from './image.js?v=11';
+import { compressImage } from './image.js?v=12';
 export { compressImage };
 
 function check({ data, error }) {
@@ -85,6 +85,31 @@ async function createSupabaseApi() {
     },
     async deleteAccount() { check(await sb.rpc('delete_user')); await sb.auth.signOut(); user = null; emit(); },
     async getProfile(id) { return check(await sb.from('profiles').select('id,name,role,shelter_name,verified,city,phone,website,address,about,avatar_url').eq('id', id).maybeSingle()); },
+
+    // ---------- Prieglaudų parama ----------
+    async myDonationRequest() {
+      if (!user) return null;
+      return check(await sb.from('shelter_donation_requests').select('*').eq('shelter_id', user.id).maybeSingle());
+    },
+    async submitDonationRequest(d) {
+      return check(await sb.rpc('submit_shelter_donation_request', {
+        p_account_holder: d.account_holder, p_bank_name: d.bank_name,
+        p_iban: d.iban.replace(/\s+/g, '').toUpperCase(), p_instructions: d.instructions || ''
+      }));
+    },
+    async listDonationRequests() {
+      return check(await sb.from('shelter_donation_requests')
+        .select('*, shelter:profiles!shelter_donation_requests_shelter_id_fkey(id,name,shelter_name,city,verified)')
+        .order('created_at', { ascending: false }));
+    },
+    async decideDonationRequest(id, approve, note = '') {
+      check(await sb.rpc('review_shelter_donation_request', { p_request_id: id, p_approve: approve, p_note: note }));
+    },
+    async approvedDonationInfo(shelterId) {
+      return check(await sb.from('shelter_donation_requests')
+        .select('account_holder,bank_name,iban,instructions')
+        .eq('shelter_id', shelterId).eq('status', 'Patvirtinta').maybeSingle());
+    },
 
     // ---------- Gyvūnai ----------
     async listPets() {
@@ -177,4 +202,4 @@ async function createSupabaseApi() {
   return api;
 }
 
-export const api = DEMO ? (await import('./demo.js?v=11')).createDemoApi() : await createSupabaseApi();
+export const api = DEMO ? (await import('./demo.js?v=12')).createDemoApi() : await createSupabaseApi();
