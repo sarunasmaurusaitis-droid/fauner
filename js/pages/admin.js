@@ -1,16 +1,19 @@
 // Administravimas: tikrinami skelbimai, pranešimai, prieglaudų paraiškos, vartotojai, visi skelbimai
-import { api } from '../api.js?v=11';
-import { esc, $, $$, icon, go, toast, photo, timeAgo, ownerName, confirmDialog, promptDialog, requireLogin, isAdmin, ageText, breedText, statusChip, initial, plural } from '../app.js?v=11';
+import { api } from '../api.js?v=12';
+import { esc, $, $$, icon, go, toast, photo, timeAgo, ownerName, confirmDialog, promptDialog, requireLogin, isAdmin, ageText, breedText, statusChip, initial, plural } from '../app.js?v=12';
 
-const TABS = [['tikrinimas', 'Tikrinami skelbimai'], ['pranesimai', 'Pranešimai'], ['paraiskos', 'Prieglaudų paraiškos'], ['vartotojai', 'Vartotojai'], ['skelbimai', 'Visi skelbimai']];
+const TABS = [['tikrinimas', 'Tikrinami skelbimai'], ['pranesimai', 'Pranešimai'], ['paraiskos', 'Prieglaudų paraiškos'], ['parama', 'Paramos prašymai'], ['vartotojai', 'Vartotojai'], ['skelbimai', 'Visi skelbimai']];
 const ROLE = { user: 'Vartotojas', shelter: 'Prieglauda', admin: 'Administratorius' };
 
 export async function render(box, tab = 'tikrinimas') {
   if (!requireLogin()) return;
   if (!isAdmin()) { toast('Šis puslapis skirtas tik administratoriams'); go(''); return; }
-  const [pets, reports, apps, users] = await Promise.all([api.adminAllPets(), api.listReports(), api.listApplications(), api.adminUsers()]);
+  const [pets, reports, apps, users, donations] = await Promise.all([
+    api.adminAllPets(), api.listReports(), api.listApplications(), api.adminUsers(), api.listDonationRequests()
+  ]);
   const pending = pets.filter(p => p.review_status === 'pending');
-  const counts = { tikrinimas: pending.length, pranesimai: reports.filter(r => r.status === 'Nauja').length, paraiskos: apps.filter(a => a.status === 'Laukia').length };
+  const counts = { tikrinimas: pending.length, pranesimai: reports.filter(r => r.status === 'Nauja').length,
+    paraiskos: apps.filter(a => a.status === 'Laukia').length, parama: donations.filter(r => r.status === 'Laukia').length };
   box.innerHTML = `
     <h1>Administravimas</h1>
     <div class="admin-tabs">${TABS.map(([k, l]) => `<a class="pill ${k === tab ? 'on' : ''}" href="#/admin/${k}">${l}${counts[k] ? ` <span class="cnt">${counts[k]}</span>` : ''}</a>`).join('')}</div>
@@ -112,15 +115,194 @@ export async function render(box, tab = 'tikrinimas') {
     });
   }
 
+  // ----- Paramos prašymai -----
+  if (tab === 'parama') {
+    const row = (label, value) => `<div><span class="sub">${label}</span><b>${esc(value || '—')}</b></div>`;
+    body.innerHTML = donations.length ? donations.map(r => `
+      <div class="panel donation-admin" data-id="${esc(r.id)}">
+        <div class="row between wrap"><h3>${esc(r.shelter?.shelter_name || r.shelter?.name || 'Prieglauda')}</h3>
+          <span class="chip ${r.status === 'Laukia' ? 'st-new' : r.status === 'Patvirtinta' ? 'st-wait' : 'st-red'}">${esc(r.status)}</span></div>
+        <p class="sub small">${esc(r.shelter?.city || '')} · Pateikta ${new Date(r.created_at).toLocaleDateString('lt-LT')}</p>
+        <div class="kv">${row('Sąskaitos savininkas', r.account_holder)}${row('Bankas', r.bank_name)}${row('IBAN', r.iban)}</div>
+        ${r.instructions ? `<p class="desc">${esc(r.instructions)}</p>` : '<p class="sub small">Papildomų mokėjimo instrukcijų nepateikta.</p>'}
+        ${r.status === 'Laukia' ? `<div class="row gap wrap"><button class="btn primary" data-approve>Patvirtinti</button><button class="btn ghost danger-text" data-reject>Atmesti</button></div>` : r.admin_note ? `<p class="sub small">Administratoriaus pastaba: ${esc(r.admin_note)}</p>` : ''}
+      </div>`).join('') : '<div class="empty"><p>Paramos prašymų nėra.</p></div>';
+    $$('.donation-admin', body).forEach(card => {
+      const r = donations.find(x => String(x.id) === card.dataset.id);
+      $('[data-approve]', card)?.addEventListener('click', async () => {
+        if (!await confirmDialog(`Patvirtinti ${r.shelter?.shelter_name || 'prieglaudos'} paramos rekvizitus? Jie taps matomi viešame profilyje.`, 'Patvirtinti')) return;
+        try { await api.decideDonationRequest(r.id, true, ''); toast('Paramos rekvizitai patvirtinti'); reload(); }
+        catch (err) { toast(err.message, 'err'); }
+      });
+      $('[data-reject]', card)?.addEventListener('click', async () => {
+        const note = await promptDialog('Atmesti paramos prašymą? Nurodykite priežastį.', 'Pvz. patikslinti sąskaitos savininką', 'Atmesti');
+        if (note === null) return;
+        try { await api.decideDonationRequest(r.id, false, note); toast('Paramos prašymas atmestas'); reload(); }
+        catch (err) { toast(err.message, 'err'); }
+      });
+    });
+  }
+
   // ----- Vartotojai -----
   if (tab === 'vartotojai') {
-    body.innerHTML = `<div class="row gap wrap admin-tools"><label class="search-input grow">${icon('search')}<input id="uq" placeholder="Vardas, el. paštas ar miestas"></label>
-      <select id="uf" class="input auto"><option value="">Visi</option><option value="user">Vartotojai</option><option value="shelter">Prieglaudos</option><option value="admin">Administratoriai</option><option value="banned">Užblokuoti</option></select></div>
-      <p class="sub small">Naujas paskyras kurk per Supabase → Authentication → Add user, o rolę priskirk čia.</p>
-      <div id="ulist" class="list"></div>`;
+    body.innerHTML = `<div class="row gap wrap admin-tools">
+  <label class="search-input grow">
+    ${icon('search')}
+    <input id="uq" placeholder="Vardas, el. paštas ar miestas">
+  </label>
+  <select id="uf" class="input auto">
+    <option value="">Visi</option>
+    <option value="user">Vartotojai</option>
+    <option value="shelter">Prieglaudos</option>
+    <option value="admin">Administratoriai</option>
+    <option value="banned">Užblokuoti</option>
+  </select>
+  <label class="sub small">Nuo
+    <input type="date" id="ufrom" class="input">
+  </label>
+  <label class="sub small">Iki
+    <input type="date" id="uto" class="input">
+  </label>
+  <select id="usort" class="input auto">
+    <option value="newest">Naujausi pirmiausia</option>
+    <option value="oldest">Seniausi pirmiausia</option>
+  </select>
+</div>
+<p class="sub small">Naujas paskyras kurk per Supabase → Authentication → Add user, o rolę priskirk čia.</p>
+<div id="ulist" class="list"></div>`;
+
+
+const statsHtml = `
+  <div class="row gap wrap admin-tools">
+    <div class="panel grow">
+      <span class="sub small">Visi vartotojai</span>
+      <h2>${users.length}</h2>
+    </div>
+    <div class="panel grow">
+      <span class="sub small">Prieglaudų paskyros</span>
+      <h2>${users.filter(u => u.role === 'shelter').length}</h2>
+    </div>
+    <div class="panel grow">
+      <span class="sub small">Visi skelbimai</span>
+      <h2>${pets.length}</h2>
+    </div>
+    <div class="panel grow">
+      <span class="sub small">Užblokuotos paskyros</span>
+      <h2>${users.filter(u => u.banned).length}</h2>
+    </div>
+  </div>
+`;
+
+body.insertAdjacentHTML('afterbegin', statsHtml);
+
+// Sudarome paskutinių 7 dienų sąrašą
+const registrationDays = Array.from({ length: 7 }, (_, i) => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - (6 - i));
+
+  const key = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-');
+
+  return {
+    key,
+    label: date.toLocaleDateString('lt-LT', {
+      weekday: 'short'
+    }),
+    count: 0
+  };
+});
+
+// Suskaičiuojame registracijas pagal dienas
+users.forEach(u => {
+  if (!u.created_at) return;
+
+  const date = new Date(u.created_at);
+
+  const key = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-');
+
+  const day = registrationDays.find(d => d.key === key);
+
+  if (day) day.count++;
+});
+
+// Apskaičiuojame didžiausią reikšmę diagramai
+const maxCount = Math.max(
+  1,
+  ...registrationDays.map(d => d.count)
+);
+
+// Sukuriame diagramos HTML
+const registrationHtml = `
+  <div class="panel" style="margin-bottom:16px">
+    <h3>Naujų vartotojų registracijos</h3>
+    <p class="sub small">Paskutinės 7 dienos</p>
+
+    ${registrationDays.map(day => {
+      const width = day.count / maxCount * 100;
+
+      return `
+        <div class="row gap" style="margin:12px 0; align-items:center">
+          <span style="width:45px">${day.label}</span>
+
+          <div style="flex:1;background:var(--surface-2,#eee);
+            height:12px;border-radius:10px;overflow:hidden">
+            <div style="width:${width}%;height:100%;
+              background:var(--primary,#5685c5);
+              border-radius:10px"></div>
+          </div>
+
+          <b style="width:25px;text-align:right">${day.count}</b>
+        </div>
+      `;
+    }).join('')}
+  </div>
+`;
+
+body.insertAdjacentHTML('beforeend', registrationHtml);
+
     const draw = () => {
-      const q = $('#uq', body).value.trim().toLowerCase(), f = $('#uf', body).value;
-      const list = users.filter(u => (!q || [u.name, u.email, u.city, u.shelter_name].join(' ').toLowerCase().includes(q)) && (!f || (f === 'banned' ? u.banned : u.role === f)));
+      const q = $('#uq', body).value.trim().toLowerCase();
+const f = $('#uf', body).value;
+const from = $('#ufrom', body).value;
+const to = $('#uto', body).value;
+const sort = $('#usort', body).value;
+
+const list = users.filter(u => {
+  const created = new Date(u.created_at);
+
+  const matchesSearch = !q ||
+    [u.name, u.email, u.city, u.shelter_name]
+      .join(' ')
+      .toLowerCase()
+      .includes(q);
+
+  const matchesRole = !f ||
+    (f === 'banned' ? u.banned : u.role === f);
+
+  const matchesFrom = !from ||
+    created >= new Date(`${from}T00:00:00`);
+
+  const matchesTo = !to ||
+    created <= new Date(`${to}T23:59:59.999`);
+
+  return matchesSearch && matchesRole &&
+    matchesFrom && matchesTo;
+}).sort((a, b) => {
+  const dateA = new Date(a.created_at).getTime();
+  const dateB = new Date(b.created_at).getTime();
+
+  return sort === 'oldest'
+    ? dateA - dateB
+    : dateB - dateA;
+});
       $('#ulist', body).innerHTML = list.map(u => `
         <div class="panel user-row" data-id="${esc(u.id)}">
           <div class="row gap"><span class="avatar soft">${esc(initial(u.shelter_name || u.name))}</span>
@@ -157,7 +339,11 @@ export async function render(box, tab = 'tikrinimas') {
         };
       });
     };
-    $('#uq', body).oninput = draw; $('#uf', body).onchange = draw;
+    $('#uq', body).oninput = draw;
+
+['uf', 'ufrom', 'uto', 'usort'].forEach(id => {
+  $(`#${id}`, body).onchange = draw;
+});
     draw();
   }
 

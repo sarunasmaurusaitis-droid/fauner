@@ -1,8 +1,8 @@
 // Gyvūno profilis, prieglaudos puslapis, išsaugoti gyvūnai, pranešimas apie skelbimą
-import { api } from '../api.js?v=11';
+import { api } from '../api.js?v=12';
 import { esc, $, $$, icon, go, back, toast, ageText, breedText, statusChip, ownerName, isVerified, photo, heartBtn, bindHearts,
-  favs, requireLogin, confirmDialog, initial, petCard, isAdmin, plural } from '../app.js?v=11';
-import { REPORT_REASONS } from '../data.js?v=11';
+  favs, requireLogin, confirmDialog, initial, petCard, isAdmin, plural } from '../app.js?v=12';
+import { REPORT_REASONS } from '../data.js?v=12';
 
 export async function render(box, id) {
   const p = await api.getPet(id);
@@ -145,6 +145,7 @@ export async function renderShelter(box, id) {
   const [prof, pets] = await Promise.all([api.getProfile(id), api.petsByOwner(id)]);
   if (!prof) { box.innerHTML = `<div class="empty"><h2>Puslapis nerastas</h2><a class="btn primary" href="#/">Į paiešką</a></div>`; return; }
   const shelter = prof.role === 'shelter';
+  const donation = shelter && prof.verified ? await api.approvedDonationInfo(id).catch(() => null) : null;
   const name = prof.shelter_name || prof.name;
   const active = pets.filter(p => p.status !== 'Rado namus');
   const found = pets.filter(p => p.status === 'Rado namus');
@@ -163,11 +164,37 @@ export async function renderShelter(box, id) {
         </div>` : ''}
       </div>
     </div>
+    ${donation ? `<section class="panel shelter-donation">
+      <h2>Padėkime gyvūnams</h2>
+      <p class="sub">Jei norite paremti šią prieglaudą, galite atlikti bankinį pavedimą.</p>
+      <button class="btn primary" id="donate-toggle" type="button">${icon('heart', 'sm')} Paremti</button>
+      <div id="donation-details" class="donation-details" hidden>
+        <div class="kv">
+          <div><span class="sub">Sąskaitos savininkas</span><b>${esc(donation.account_holder)}</b></div>
+          <div><span class="sub">Bankas</span><b>${esc(donation.bank_name)}</b></div>
+          <div><span class="sub">IBAN</span><b id="donation-iban">${esc(donation.iban)}</b><button class="link" id="copy-iban" type="button">Kopijuoti sąskaitą</button></div>
+        </div>
+        ${donation.instructions ? `<p class="desc">${esc(donation.instructions)}</p>` : ''}
+        <p class="hint">Pavedimą atlikite savo banko programėlėje arba interneto banke. Fauner mokėjimo neatlieka ir neapdoroja.</p>
+      </div>
+    </section>` : ''}
     <h2>Laukia namų (${active.length})</h2>
     ${active.length ? `<div class="grid">${active.map(petCard).join('')}</div>` : '<p class="sub">Šiuo metu gyvūnų nėra.</p>'}
     ${found.length ? `<h2>Jau rado namus (${found.length})</h2><div class="grid found">${found.map(petCard).join('')}</div>` : ''}`;
   bindHearts(box);
   $('[data-back]', box).onclick = () => back('');
+  const donateToggle = $('#donate-toggle', box);
+  if (donateToggle) donateToggle.onclick = () => {
+    const details = $('#donation-details', box);
+    details.hidden = !details.hidden;
+    donateToggle.textContent = details.hidden ? 'Paremti' : 'Slėpti rekvizitus';
+  };
+  const copyIban = $('#copy-iban', box);
+  if (copyIban) copyIban.onclick = async () => {
+    const iban = $('#donation-iban', box).textContent;
+    try { await navigator.clipboard.writeText(iban); toast('IBAN nukopijuotas'); }
+    catch { window.prompt('Nukopijuokite IBAN:', iban); }
+  };
 }
 
 export async function renderSaved(box) {
