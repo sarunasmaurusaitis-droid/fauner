@@ -53,14 +53,14 @@ function seed() {
 }
 
 function checkPet(d) {
-  if (!d.name?.trim() || !d.breed?.trim() || !d.city?.trim() || !d.photos?.length || (d.description || '').trim().length < 20)
+  if (!d.name?.trim() || (!d.mixed && !d.breed?.trim()) || !d.city?.trim() || !d.photos?.length || (d.description || '').trim().length < 20)
     throw new Error('Skelbime privalo būti vardas, veislė, miestas, bent viena nuotrauka ir aprašymas (bent 20 simbolių)');
 }
 
 export function createDemoApi() {
   let db;
   try { db = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch { db = seed(); }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch { } };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { console.warn('localStorage save failed:', e); } };
   const nid = () => ++db.seq;
   const now = () => new Date().toISOString();
   const listeners = new Set();
@@ -172,7 +172,8 @@ export function createDemoApi() {
       if (!canEdit(pet(id))) throw new Error('Neturite teisės');
       cleanupPet(id); db.pets = db.pets.filter(x => x.id != id); save(); return wait();
     },
-    async uploadPhoto(file) { return readFile(await compressImage(file, 900, 0.8)); },
+
+    async uploadPhoto(file) { return readFile(await compressImage(file, 600, 0.7)); },
 
     async favoriteIds() { const u = me(); return wait(new Set(u ? db.favorites.filter(f => f.user_id === u.id).map(f => f.pet_id) : [])); },
     async setFavorite(id, on) {

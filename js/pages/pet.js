@@ -60,6 +60,11 @@ export async function render(box, id) {
           <div><span class="sub">Amžius</span><b>${ageText(p.birth_date)}</b></div>
           <div><span class="sub">Veislė</span><b>${esc(breedText(p))}</b></div>
           <div><span class="sub">Lytis</span><b>${esc(p.sex)}</b></div>
+          ${p.mixed && p.eye_color?.length ? `<div><span class="sub">Akių spalva</span><b>${esc([].concat(p.eye_color).join(', '))}</b></div>` : ''}
+          ${p.mixed && p.fur_color?.length ? `<div><span class="sub">Kailio spalva</span><b>${esc([].concat(p.fur_color).join(', '))}</b></div>` : ''}
+          ${p.mixed && p.height?.length ? `<div><span class="sub">Ūgis</span><b>${esc([].concat(p.height).join(', '))}</b></div>` : ''}
+          ${p.mixed && p.fur_type?.length ? `<div><span class="sub">Kailio tipas</span><b>${esc([].concat(p.fur_type).join(', '))}</b></div>` : ''}
+          ${p.mixed && p.ear_type?.length ? `<div><span class="sub">Ausys</span><b>${esc([].concat(p.ear_type).join(', '))}</b></div>` : ''}
         </div>
         ${p.health?.length ? `<h3>Sveikata</h3><div class="checks">${p.health.map(h => `<span>${icon('check', 'sm ok')} ${esc(h)}</span>`).join('')}</div>` : ''}
         ${p.traits?.length ? `<h3>Charakteris</h3><div class="pills">${p.traits.map(t => `<span class="pill static">${esc(t)}</span>`).join('')}</div>` : ''}

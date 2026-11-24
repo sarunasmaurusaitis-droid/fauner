@@ -41,6 +41,12 @@ export const BREEDS = {
   'Žuvys': ['Auksinė žuvelė', 'Gupija', 'Kovotoja (betta)', 'Skaliarė', 'Kita akvariumo žuvis'],
 };
 
+export const EYE_COLORS = ['Rudos', 'Mėlynos', 'Žalios', 'Geltonos', 'Oranžinės', 'Skirtingų spalvų'];
+export const FUR_COLORS = ['Juoda', 'Ruda', 'Balta', 'Smėlinė', 'Šviesiai pilka', 'Tamsiai pilka'];
+export const ANIMAL_HEIGHT = ['Mažas', 'Vidutinis', 'Didelis'];
+export const FUR_TYPE = ['Trumpas', 'Ilgas', 'Garbanotas'];
+export const EAR_TYPE = ['Stačios', 'Nulėpusios'];
+
 export const TRAITS = ['Ramus', 'Draugiškas vaikams', 'Aktyvus', 'Tinka butui', 'Sutaria su kitais', 'Sutaria su katėmis'];
 export const HEALTH = ['Paskiepytas', 'Kastruotas / sterilizuotas', 'Čipuotas', 'Pasas'];
 export const REPORT_REASONS = ['Netikras skelbimas ar apgavystė', 'Prašo pinigų / gyvūnas pardavinėjamas', 'Netinkamos nuotraukos ar tekstas', 'Kita priežastis'];

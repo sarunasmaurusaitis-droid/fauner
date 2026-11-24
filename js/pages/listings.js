@@ -3,7 +3,7 @@ import { api } from '../api.js?v=11';
 import { esc, $, $$, icon, go, back, toast, ageText, ageMonths, birthFrom, breedText, statusChip, photo, requireLogin,
   confirmDialog, timeAgo, initial, isAdmin, plural } from '../app.js?v=11';
 import { reqChip, requestDetailsHtml } from './requests.js?v=11';
-import { CITIES, BREEDS, SPECIES, TRAITS, HEALTH, UNKNOWN_BREED, PHONE_RE, saleWords } from '../data.js?v=11';
+import { CITIES, BREEDS, SPECIES, TRAITS, HEALTH, UNKNOWN_BREED, PHONE_RE, saleWords, EYE_COLORS, FUR_COLORS, ANIMAL_HEIGHT, FUR_TYPE, EAR_TYPE } from '../data.js?v=11';
 import { combo } from '../ui.js?v=11';
 
 const STATUSES = ['Laukia namų', 'Rezervuotas', 'Rado namus'];
@@ -118,6 +118,9 @@ const groupVal = (root, name) => {
   return g.dataset.multi === '1' ? on : on[0];
 };
 
+const MUTT_SPECIES = ['Šuo', 'Katė'];
+const allowsMutt = pet => MUTT_SPECIES.includes(pet.species);
+
 const sections = {
   photos: pet => `
     <div class="photo-grid" id="photos">
@@ -133,8 +136,22 @@ const sections = {
   basic: pet => `
     <label>Vardas<input class="input" name="name" required maxlength="40" value="${esc(pet.name)}"></label>
     <label>Gyvūnas <span class="req">*</span></label>${pillGroup('species', SPECIES, pet.species)}
-    <label>Veislė <span class="req">*</span></label><div id="breed"></div>
-    <label class="check"><input type="checkbox" name="mixed" ${pet.mixed ? 'checked' : ''}> Mišrūnas <span class="sub small">– pažymėk, jei gyvūnas tik panašus į šią veislę</span></label>
+    <div id="mutt-wrap" ${allowsMutt(pet) ? '' : 'hidden'}>
+      <label class="check"><input type="checkbox" name="mixed" ${pet.mixed ? 'checked' : ''}> Mišrūno detalės</label>
+      <div id="breed-section" ${pet.mixed ? 'hidden' : ''}>
+        <label>Veislė <span class="req">*</span></label><div id="breed"></div>
+      </div>
+      <div id="mutt-section" ${pet.mixed ? '' : 'hidden'}>
+        <label>Akių spalvos</label>${pillGroup('eye_color', EYE_COLORS, pet.eye_color || [], true)}
+        <label>Kailio spalva(-os)</label>${pillGroup('fur_color', FUR_COLORS, pet.fur_color || [], true)}
+        <label>Ūgis</label>${pillGroup('height', ANIMAL_HEIGHT, pet.height || [], true)}
+        <label>Kailio tipas</label>${pillGroup('fur_type', FUR_TYPE, pet.fur_type || [], true)}
+        <label>Ausys</label>${pillGroup('ear_type', EAR_TYPE, pet.ear_type || [], true)}
+      </div>
+    </div>
+    <div id="non-mutt-breed" ${allowsMutt(pet) ? 'hidden' : ''}>
+      <label>Veislė <span class="req">*</span></label><div id="breed-other"></div>
+    </div>
     <label>Amžius <span class="req">*</span></label>
     <div class="two"><label class="inline">Metai<input class="input" type="number" name="years" min="0" max="30" value="${pet._y}"></label>
       <label class="inline">Mėnesiai<input class="input" type="number" name="months" min="0" max="11" value="${pet._m}"></label></div>
@@ -170,14 +187,68 @@ function bindPhotos(root, pet, redraw) {
 
 function bindBasic(root, pet) {
   const breedOpts = sp => [...(BREEDS[sp] || []), UNKNOWN_BREED];
-  const breed = combo($('#breed', root), { options: breedOpts(pet.species), value: pet.breed, placeholder: 'Pasirink veislę', required: true, name: 'breed_req', onChange: v => { pet.breed = v; if (v === UNKNOWN_BREED) $('[name=mixed]', root).checked = true; } });
-  const city = combo($('#city', root), { options: CITIES, value: pet.city, placeholder: 'Pasirink miestą ar rajoną', required: true, name: 'city_req', onChange: v => { pet.city = v; } });
-  $('[data-group=species]', root).addEventListener('change', () => { pet.species = groupVal(root, 'species'); breed.setOptions(breedOpts(pet.species)); pet.breed = breed.value; });
-  return { breed, city };
+  const breed = combo($('#breed', root), {
+    options: breedOpts(pet.species),
+    value: pet.breed,
+    placeholder: 'Pasirink veislę',
+    onChange: v => { pet.breed = v; }
+  });
+  const breedOther = combo($('#breed-other', root), {
+    options: breedOpts(pet.species),
+    value: pet.breed,
+    placeholder: 'Pasirink veislę',
+    onChange: v => { pet.breed = v; }
+  });
+  const city = combo($('#city', root), {
+    options: CITIES,
+    value: pet.city,
+    placeholder: 'Pasirink miestą ar rajoną',
+    required: true,
+    name: 'city_req',
+    onChange: v => { pet.city = v; }
+  });
+
+  const syncSpecies = () => {
+    pet.species = groupVal(root, 'species');
+    const opts = breedOpts(pet.species);
+    breed.setOptions(opts);
+    breedOther.setOptions(opts);
+    const ok = allowsMutt(pet);
+    $('#mutt-wrap', root).hidden = !ok;
+    $('#non-mutt-breed', root).hidden = ok;
+    if (!ok) {
+      pet.mixed = false;
+      $('[name=mixed]', root).checked = false;
+      $('#breed-section', root).hidden = false;
+      $('#mutt-section', root).hidden = true;
+      pet.eye_color = [];
+      pet.fur_color = [];
+      pet.height = [];
+      pet.fur_type = [];
+      pet.ear_type = [];
+    }
+    pet.breed = ok ? breed.value : breedOther.value;
+  };
+
+  $('[data-group=species]', root).addEventListener('change', syncSpecies);
+
+  const mixCb = $('[name=mixed]', root);
+  mixCb.onchange = () => {
+    const isMutt = mixCb.checked;
+    pet.mixed = isMutt;
+    $('#breed-section', root).hidden = isMutt;
+    $('#mutt-section', root).hidden = !isMutt;
+    if (isMutt) { pet.breed = ''; breed.value = ''; }
+    else { pet.eye_color = []; pet.fur_color = []; pet.height = []; pet.fur_type = []; pet.ear_type = []; }
+  };
+  return { breed, breedOther, city };
 }
 
 function collect(root, pet) {
-  for (const k of ['species', 'sex', 'traits', 'health', 'status']) { const v = groupVal(root, k); if (v !== undefined) pet[k] = v; }
+  for (const k of ['species', 'sex', 'traits', 'health', 'status', 'eye_color', 'fur_color', 'height', 'fur_type', 'ear_type']) {
+    const v = groupVal(root, k);
+    if (v !== undefined) pet[k] = v;
+  }
   const g = n => $(`[name=${n}]`, root);
   if (g('name')) pet.name = g('name').value.trim();
   if (g('mixed')) pet.mixed = g('mixed').checked;
@@ -192,7 +263,7 @@ function validate(pet, step) {
   if (!step || step === 2) {
     if (!pet.name) return 'Įrašyk vardą';
     if (!pet.species) return 'Pasirink gyvūno rūšį';
-    if (!pet.breed) return 'Pasirink veislę (jei nežinai – „Nežinoma (mišrūnas)“)';
+    if (!pet.mixed && !pet.breed) return 'Pasirink veislę arba pažymėk „Mišrūno detalės“';
     if (pet._y * 12 + pet._m < 1) return 'Nurodyk amžių (bent 1 mėnesį)';
     if (pet._m > 11) return 'Mėnesių turi būti nuo 0 iki 11';
     if (!pet.sex) return 'Pasirink lytį';
@@ -210,6 +281,7 @@ function validate(pet, step) {
 const toData = pet => ({
   name: pet.name, species: pet.species, breed: pet.breed, mixed: pet.mixed, birth_date: birthFrom(pet._y, pet._m), sex: pet.sex,
   city: pet.city, description: pet.description, traits: pet.traits, health: pet.health, photos: pet.photos, status: pet.status, queue_open: pet.queue_open,
+  eye_color: pet.eye_color || [], fur_color: pet.fur_color || [], height: pet.height || [], fur_type: pet.fur_type || [], ear_type: pet.ear_type || [],
 });
 
 // „Ne pardavimui“: perspėjimas prieš išsaugant

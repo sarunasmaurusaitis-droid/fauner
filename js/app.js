@@ -62,7 +62,7 @@ export const birthFrom = (years, months) => {
   const d = new Date(); d.setMonth(d.getMonth() - (Number(years || 0) * 12 + Number(months || 0)));
   return d.toISOString().slice(0, 10);
 };
-export const breedText = p => p.mixed ? (p.breed.startsWith('Nežinoma') ? 'Mišrūnas' : `${p.breed} (mišrūnas)`) : p.breed;
+export const breedText = p => p.mixed ? (p.breed ? `${p.breed} (mišrūnas)` : 'Mišrūnas') : (p.breed || '');
 
 export const initial = s => (String(s || '?').replace(/^(VšĮ|UAB|MB|Všį)\s*/i, '').replace(/[^\p{L}]/gu, '')[0] || '?').toUpperCase();
 export const ownerName = p => p.owner ? (p.owner.shelter_name || p.owner.name) : (p.org_name || 'Fauner');
