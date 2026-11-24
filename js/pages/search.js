@@ -5,12 +5,14 @@ import { CITIES, BREEDS, SPECIES, SPECIES_PLURAL, EYE_COLORS, FUR_COLORS, ANIMAL
 import { combo, dualRange } from '../ui.js?v=11';
 
 const QUICK = [['', 'Visi'], ...SPECIES.map(s => [s, SPECIES_PLURAL[s]])];
+const TRAIT_SPECIES = ['Šuo', 'Katė'];
 const AGE_MAX = 20;
 const DEF = () => ({
   q: '',
   species: [],
   breeds: [],
   mixedOnly: false,
+  moreFilters: false,
   eyeColors: [],
   furColors: [],
   heights: [],
@@ -31,6 +33,7 @@ function readUrl() {
   if (q.get('q')) F.q = q.get('q');
   if (q.get('rusis')) F.species = q.get('rusis').split('|').filter(s => SPECIES.includes(s));
   if (q.get('misrunas') === '1') F.mixedOnly = true;
+  if (q.get('daugiau') === '1') F.moreFilters = true;
   if (q.get('veisle')) F.breeds = q.get('veisle').split('|');
   if (q.get('akys')) F.eyeColors = q.get('akys').split('|');
   if (q.get('kailio_spalva')) F.furColors = q.get('kailio_spalva').split('|');
@@ -47,6 +50,9 @@ function readUrl() {
   if (q.get('rezervuoti') === '0') F.reserved = false;
   if (q.get('patvirtintos') === '1') F.verified = true;
   if (q.get('rikiuoti') === 'jauniausi') F.sort = 'young';
+  if (F.eyeColors.length || F.furColors.length || F.heights.length || F.furTypes.length || F.earTypes.length) {
+    F.moreFilters = true;
+  }
   return F;
 }
 
@@ -55,6 +61,7 @@ function writeUrl(F) {
   if (F.q) q.set('q', F.q);
   if (F.species.length) q.set('rusis', F.species.join('|'));
   if (F.mixedOnly) q.set('misrunas', '1');
+  if (F.moreFilters) q.set('daugiau', '1');
   if (F.breeds.length) q.set('veisle', F.breeds.join('|'));
   if (F.eyeColors.length) q.set('akys', F.eyeColors.join('|'));
   if (F.furColors.length) q.set('kailio_spalva', F.furColors.join('|'));
@@ -77,17 +84,27 @@ function hasAny(selected, petVal) {
   return Array.isArray(petVal) ? selected.some(v => petVal.includes(v)) : selected.includes(petVal);
 }
 
+function traitsAllowedForSpecies(speciesList) {
+  if (!speciesList.length) return true;
+  return speciesList.some(s => TRAIT_SPECIES.includes(s));
+}
+
 function apply(pets, F) {
   const q = F.q.trim().toLowerCase();
+  const checkTraits = traitsAllowedForSpecies(F.species) && F.moreFilters;
   const out = pets.filter(p => {
     const years = ageMonths(p.birth_date) / 12;
     return p.status !== 'Rado namus' &&
       (F.reserved || p.status === 'Laukia namų') &&
-      (!q || [p.name, p.city, p.species, p.breed, p.mixed ? 'mišrūnas' : '', p.description, ...(p.traits || [])].join(' ').toLowerCase().includes(q)) &&
+      (!q || [
+        p.name, p.city, p.species, p.breed, p.mixed ? 'mišrūnas' : '', p.description,
+        ...(p.traits || []), ...(p.eye_color || []), ...(p.fur_color || []),
+        ...(p.height || []), ...(p.fur_type || []), ...(p.ear_type || [])
+      ].join(' ').toLowerCase().includes(q)) &&
       (!F.species.length || F.species.includes(p.species)) &&
       (!F.mixedOnly || p.mixed) &&
       (F.mixedOnly || !F.breeds.length || F.breeds.includes(p.breed)) &&
-      (!F.mixedOnly || (
+      (!checkTraits || (
         hasAny(F.eyeColors, p.eye_color) &&
         hasAny(F.furColors, p.fur_color) &&
         hasAny(F.heights, p.height) &&
@@ -130,7 +147,12 @@ export async function render(box) {
           <input type="checkbox" id="mix" ${F.mixedOnly ? 'checked' : ''}><i></i>
         </label>
 
-        <div id="mutt-box" ${F.mixedOnly ? '' : 'hidden'}>
+        <label class="switch" id="more-wrap">
+          <span>Daugiau filtrų</span>
+          <input type="checkbox" id="more" ${F.moreFilters ? 'checked' : ''}><i></i>
+        </label>
+
+        <div id="mutt-box" hidden>
           <label class="f-label">Akių spalvos</label><div id="eye-color"></div>
           <label class="f-label">Kailio spalva(-os)</label><div id="fur-color"></div>
           <label class="f-label">Ūgis</label><div id="animal-height"></div>
@@ -188,29 +210,50 @@ export async function render(box) {
   });
   $('#age-lbl', box).textContent = ageLabel(F.ageFrom, F.ageTo);
 
+  function clearTraits() {
+    F.eyeColors = [];
+    F.furColors = [];
+    F.heights = [];
+    F.furTypes = [];
+    F.earTypes = [];
+    eyeCombo.value = [];
+    furColorCombo.value = [];
+    heightCombo.value = [];
+    furTypeCombo.value = [];
+    earCombo.value = [];
+  }
+
+  function syncTraitVisibility() {
+    const canUseTraits = traitsAllowedForSpecies(F.species);
+    $('#more-wrap', box).hidden = !canUseTraits;
+    if (!canUseTraits) {
+      F.moreFilters = false;
+      $('#more', box).checked = false;
+      clearTraits();
+    }
+    $('#mutt-box', box).hidden = !(canUseTraits && F.moreFilters);
+  }
+
   function setMuttMode(on) {
     F.mixedOnly = on;
     $('#mix', box).checked = on;
-    $('#mutt-box', box).hidden = !on;
     $('#breed-box', box).hidden = on;
     if (on) {
       F.breeds = [];
       breedCombo.value = [];
-    } else {
-      F.eyeColors = [];
-      F.furColors = [];
-      F.heights = [];
-      F.furTypes = [];
-      F.earTypes = [];
-      eyeCombo.value = [];
-      furColorCombo.value = [];
-      heightCombo.value = [];
-      furTypeCombo.value = [];
-      earCombo.value = [];
     }
+    syncTraitVisibility();
+  }
+
+  function setMoreFilters(on) {
+    F.moreFilters = on;
+    $('#more', box).checked = on;
+    if (!on) clearTraits();
+    syncTraitVisibility();
   }
 
   function draw() {
+    syncTraitVisibility();
     const list = apply(pets, F);
     $('#count', box).textContent = `Rasta: ${plural(list.length, 'gyvūnas', 'gyvūnai', 'gyvūnų')}`;
     grid.innerHTML = list.length
@@ -219,7 +262,7 @@ export async function render(box) {
     bindHearts(grid);
     $$('[data-clear]', grid).forEach(b => (b.onclick = clear));
 
-    const n = F.breeds.length + F.cities.length + (F.mixedOnly ? 1 : 0) +
+    const n = F.breeds.length + F.cities.length + (F.mixedOnly ? 1 : 0) + (F.moreFilters ? 1 : 0) +
       F.eyeColors.length + F.furColors.length + F.heights.length + F.furTypes.length + F.earTypes.length +
       (F.sex ? 1 : 0) + (F.ageFrom > 0 || F.ageTo < AGE_MAX ? 1 : 0) + (!F.reserved) + F.verified;
     const badge = $('#fcount', box);
@@ -237,7 +280,9 @@ export async function render(box) {
     cityCombo.value = [];
     breedCombo.setOptions(breedOptions());
     breedCombo.value = [];
+    clearTraits();
     setMuttMode(false);
+    setMoreFilters(false);
     age.set(0, AGE_MAX);
     $('#age-lbl', box).textContent = ageLabel(0, AGE_MAX);
     $$('#sex .pill', box).forEach(b => b.classList.toggle('on', b.dataset.v === ''));
@@ -253,6 +298,7 @@ export async function render(box) {
     draw();
   }));
   $('#mix', box).onchange = e => { setMuttMode(e.target.checked); draw(); };
+  $('#more', box).onchange = e => { setMoreFilters(e.target.checked); draw(); };
   $('#res', box).onchange = e => { F.reserved = e.target.checked; draw(); };
   $('#ver', box).onchange = e => { F.verified = e.target.checked; draw(); };
   $$('[data-clear]', filters).forEach(b => (b.onclick = clear));
