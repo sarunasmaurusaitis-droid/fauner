@@ -1,6 +1,12 @@
 // Užklausa priglausti, žinutės ir pokalbis
-import { api } from '../api.js?v=11';
-import { esc, $, $$, icon, go, back, toast, ageText, breedText, ownerName, photo, requireLogin, timeAgo, confirmDialog, after, unread } from '../app.js?v=11';
+import { api } from '../api.js?v=12';
+import { esc, $, $$, icon, go, back, toast, ageText, breedText, ownerName, photo, requireLogin, timeAgo, confirmDialog, after, unread, avatarHtml } from '../app.js?v=12';
+
+// Kas yra kita pokalbio pusė: „Prieglauda: Letenėlė“, „Globėjas: Tomas“ arba „Kandidatas: Ona“
+const otherSide = (r, iAmOwner) => iAmOwner
+  ? { role: 'Kandidatas', name: r.seeker?.name || r.full_name, url: r.seeker?.avatar_url }
+  : { role: r.pet.owner?.role === 'shelter' ? 'Prieglauda' : 'Globėjas', name: ownerName(r.pet), url: r.pet.owner?.avatar_url };
+const petAvatar = (r, o) => `<span class="pet-av"><img class="round" src="${esc(photo(r.pet))}" alt="">${avatarHtml(o.name, o.url, 'corner')}</span>`;
 
 const REQ_CLASS = { 'Išsiųsta': 'st-gray', 'Peržiūrėta': 'st-res', 'Pakviestas susitikti': 'st-wait', 'Pasirinktas': 'st-wait', 'Atmesta': 'st-red', 'Atšaukta': 'st-gray' };
 export const reqChip = (s, queued) => `<span class="chip ${REQ_CLASS[s] || ''}">${esc(queued && ['Išsiųsta', 'Peržiūrėta'].includes(s) ? 'Eilėje' : s)}</span>`;
@@ -76,14 +82,14 @@ export async function renderForm(box, petId) {
           <label>Papildoma informacija <span class="opt">(nebūtina)</span>
             <textarea class="input" name="notes" rows="3" maxlength="1000" placeholder="Ką dar prieglaudai būtų svarbu žinoti?"></textarea>
           </label>
-          <p class="sub small">Pateiktą informaciją matys tik su šiuo gyvūnu susijusi prieglauda. Nepateik slaptažodžių ar asmens dokumentų numerių.</p>`
+          <p class="sub small">Pateiktą informaciją matys tik su šiuo gyvūnu susijusi prieglauda. Nepateik slaptažodžių ar asmens dokumentų numerių. <a class="link" href="#/privatumas" target="_blank">Kaip tvarkome duomenis</a></p>`
         : `
           <h2>Žinutė globėjui</h2>
           <p class="sub">Parašyk trumpą žinutę apie save ir kodėl norėtum priglausti ${esc(p.name)}. Jokio papildomo klausimyno nereikia.</p>
           <label>Jūsų žinutė
             <textarea class="input" name="message" rows="5" required minlength="5" maxlength="2000" placeholder="Sveiki, norėčiau priglausti ${esc(p.name)}. Norėčiau sužinoti…"></textarea>
           </label>
-          <p class="sub small">Žinutę matys tik šio gyvūno globėjas. Galėsite tęsti pokalbį skiltyje „Žinutės“.</p>`}
+          <p class="sub small">Žinutę matys tik šio gyvūno globėjas. Galėsite tęsti pokalbį skiltyje „Žinutės“. <a class="link" href="#/privatumas" target="_blank">Kaip tvarkome duomenis</a></p>`}
         <button class="btn primary block" type="submit">${queued ? 'Stoti į eilę' : 'Siųsti užklausą'}</button>
       </form>
     </div>`;
@@ -147,15 +153,15 @@ export async function renderInbox(box) {
   };
   const item = r => {
     const lm = last[r.id];
-    const who = r._in ? r.seeker?.name || r.full_name : ownerName(r.pet);
+    const o = otherSide(r, r._in);
     const preview = lm ? (lm.kind === 'system' ? lm.body : (lm.sender_id === u.id ? 'Tu: ' : '') + lm.body) : r._in ? 'Nauja užklausa' : 'Užklausa išsiųsta';
     return `
       <a class="list-item ${isUnread(r) ? 'unread' : ''}" href="#/zinutes/${r.id}">
-        <img class="round" src="${esc(photo(r.pet))}" alt="">
+        ${petAvatar(r, o)}
         <div class="grow">
-          <div class="row between"><b>${esc(who)}</b><span class="sub small">${timeAgo(ts(r))}</span></div>
-          <span class="sub ellipsis">Dėl: ${esc(r.pet.name)} · ${esc(preview)}</span>
-          <div class="row gap-s">${r._in ? '<span class="chip st-new">Gauta</span>' : ''}${reqChip(r.status, r.queued)}${isUnread(r) ? '<span class="dot"></span>' : ''}</div>
+          <div class="row between"><b>${esc(r.pet.name)}, ${ageText(r.pet.birth_date)}</b><span class="sub small">${timeAgo(ts(r))}</span></div>
+          <span class="sub ellipsis">${o.role}: ${esc(o.name)} · ${esc(preview)}</span>
+          <div class="row gap-s">${r._in ? '<span class="chip st-new">Gauta užklausa</span>' : '<span class="chip st-gray">Mano užklausa</span>'}${reqChip(r.status, r.queued)}${isUnread(r) ? '<span class="dot"></span>' : ''}</div>
         </div>
       </a>`;
   };
@@ -181,15 +187,15 @@ export async function renderChat(box, reqId) {
   const isOwner = r.pet.owner_id === u.id;
   if (isOwner && r.status === 'Išsiųsta') r = await api.updateRequest(r.id, { status: 'Peržiūrėta' });
   await api.markRead(r); unread.refresh();
-  const other = isOwner ? (r.seeker?.name || r.full_name) : ownerName(r.pet);
+  const o = otherSide(r, isOwner);
   const closed = ['Atmesta', 'Atšaukta'].includes(r.status);
 
   box.innerHTML = `
     <div class="chat">
       <div class="chat-head">
         <a class="icon-btn" href="#/zinutes" aria-label="Atgal">${icon('back')}</a>
-        <img class="round" src="${esc(photo(r.pet))}" alt="">
-        <div class="grow"><b>${esc(other)}</b><span class="sub">Dėl: ${esc(r.pet.name)}, ${ageText(r.pet.birth_date)}</span></div>
+        ${petAvatar(r, o)}
+        <div class="grow"><b>${esc(r.pet.name)}, ${ageText(r.pet.birth_date)}</b><span class="sub">${o.role}: ${esc(o.name)}</span></div>
         <a class="link small" href="#/gyvunas/${r.pet.id}">Gyvūno profilis</a>
       </div>
       <div class="chat-info" id="info"></div>

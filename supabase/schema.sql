@@ -60,6 +60,12 @@ alter table public.pets add column if not exists queue_open boolean not null def
 alter table public.pets add column if not exists archived boolean not null default false;
 alter table public.pets add column if not exists review_status text not null default 'ok';
 alter table public.pets add column if not exists review_reason text not null default '';
+-- Išvaizda ir dydis (paieškos filtrams; šunims ir katėms privaloma formoje)
+alter table public.pets add column if not exists eye_color text[] not null default '{}';
+alter table public.pets add column if not exists fur_color text[] not null default '{}';
+alter table public.pets add column if not exists height    text[] not null default '{}';
+alter table public.pets add column if not exists fur_type  text[] not null default '{}';
+alter table public.pets add column if not exists ear_type  text[] not null default '{}';
 -- Senas amžius metais → apytikslė gimimo data
 do $$ begin
   if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'pets' and column_name = 'age_years') then

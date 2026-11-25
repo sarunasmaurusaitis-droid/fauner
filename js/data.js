@@ -43,13 +43,14 @@ export const BREEDS = {
 
 export const EYE_COLORS = ['Rudos', 'Mėlynos', 'Žalios', 'Geltonos', 'Oranžinės', 'Skirtingų spalvų'];
 export const FUR_COLORS = ['Juoda', 'Ruda', 'Balta', 'Smėlinė', 'Šviesiai pilka', 'Tamsiai pilka'];
-export const ANIMAL_HEIGHT = ['Mažas', 'Vidutinis', 'Didelis'];
+// Dydis pagal svorį (laukas DB vadinasi height)
+export const ANIMAL_HEIGHT = ['Mažas (iki 10 kg)', 'Vidutinis (10–25 kg)', 'Didelis (daugiau nei 25 kg)'];
 export const FUR_TYPE = ['Trumpas', 'Ilgas', 'Garbanotas'];
 export const EAR_TYPE = ['Stačios', 'Nulėpusios'];
 
 export const TRAITS = ['Ramus', 'Draugiškas vaikams', 'Aktyvus', 'Tinka butui', 'Sutaria su kitais', 'Sutaria su katėmis'];
 export const HEALTH = ['Paskiepytas', 'Kastruotas / sterilizuotas', 'Čipuotas', 'Pasas'];
-export const REPORT_REASONS = ['Netikras skelbimas ar apgavystė', 'Prašo pinigų / gyvūnas pardavinėjamas', 'Netinkamos nuotraukos ar tekstas', 'Kita priežastis'];
+export const REPORT_REASONS = ['Netikras skelbimas ar apgavystė', 'Prašo pinigų / gyvūnas pardavinėjamas', 'Gyvūnas jau atiduotas', 'Netinkamos nuotraukos ar tekstas', 'Kita priežastis'];
 
 export const PHONE_RE = /(\+?370|8)[\s-]?6\d{2}[\s-]?\d{2}[\s-]?\d{3}/;
 

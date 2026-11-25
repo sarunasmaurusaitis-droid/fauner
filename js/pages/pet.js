@@ -1,8 +1,8 @@
 // Gyvūno profilis, prieglaudos puslapis, išsaugoti gyvūnai, pranešimas apie skelbimą
-import { api } from '../api.js?v=11';
+import { api } from '../api.js?v=12';
 import { esc, $, $$, icon, go, back, toast, ageText, breedText, statusChip, ownerName, isVerified, photo, heartBtn, bindHearts,
-  favs, requireLogin, confirmDialog, initial, petCard, isAdmin, plural } from '../app.js?v=11';
-import { REPORT_REASONS } from '../data.js?v=11';
+  favs, requireLogin, confirmDialog, initial, petCard, isAdmin, plural } from '../app.js?v=12';
+import { REPORT_REASONS } from '../data.js?v=12';
 
 export async function render(box, id) {
   const p = await api.getPet(id);
@@ -29,7 +29,7 @@ export async function render(box, id) {
     <p class="sub center small">${shelterOwner ? 'Užpildysi trumpą klausimyną' : 'Parašysi trumpą žinutę'}, ${ownerKind} atsakys žinutėse.</p>`;
 
   box.innerHTML = `
-    <button class="back" data-back>${icon('back')} Atgal</button>
+    <button class="back hide-mobile" data-back>${icon('back')} Atgal</button>
     ${p.hidden ? `<div class="notice err">Šį skelbimą paslėpė administratorius – kiti vartotojai jo nemato.</div>` : ''}
     ${p.archived ? `<div class="notice">Skelbimas archyvuotas – kiti vartotojai jo nemato.</div>` : ''}
     ${p.review_status === 'pending' ? `<div class="notice">Skelbimas laukia administratoriaus patikrinimo, todėl kol kas nerodomas kitiems. Fauner gyvūnai atiduodami tik nemokamai – jei aprašyme minima kaina ar pinigai, pataisyk jį.${p.review_reason ? ` <span class="sub">(${esc(p.review_reason)})</span>` : ''}</div>` : ''}
@@ -59,10 +59,11 @@ export async function render(box, id) {
         <div class="facts">
           <div><span class="sub">Amžius</span><b>${ageText(p.birth_date)}</b></div>
           <div><span class="sub">Veislė</span><b>${esc(breedText(p))}</b></div>
+          ${p.mixed || p.breed ? `<div><span class="sub">Kilmė</span><b>${p.mixed ? 'Mišrūnas' : 'Grynaveislis'}</b></div>` : ''}
           <div><span class="sub">Lytis</span><b>${esc(p.sex)}</b></div>
           ${p.eye_color?.length ? `<div><span class="sub">Akių spalva</span><b>${esc([].concat(p.eye_color).join(', '))}</b></div>` : ''}
           ${p.fur_color?.length ? `<div><span class="sub">Kailio spalva</span><b>${esc([].concat(p.fur_color).join(', '))}</b></div>` : ''}
-          ${p.height?.length ? `<div><span class="sub">Ūgis</span><b>${esc([].concat(p.height).join(', '))}</b></div>` : ''}
+          ${p.height?.length ? `<div><span class="sub">Dydis</span><b>${esc([].concat(p.height).join(', '))}</b></div>` : ''}
           ${p.fur_type?.length ? `<div><span class="sub">Kailio tipas</span><b>${esc([].concat(p.fur_type).join(', '))}</b></div>` : ''}
           ${p.ear_type?.length ? `<div><span class="sub">Ausys</span><b>${esc([].concat(p.ear_type).join(', '))}</b></div>` : ''}
         </div>
@@ -71,12 +72,13 @@ export async function render(box, id) {
         <h3>Apie gyvūną</h3>
         <p class="desc">${esc(p.description || 'Aprašymo nėra.')}</p>
         <div class="actions">
-          ${action}
+          ${action.replace('id="adopt"', 'data-adopt')}
           ${isAdmin() && !mine ? `<a class="btn ghost block" href="#/skelbimai/${p.id}/redaguoti">${icon('edit')} Redaguoti (admin)</a>` : ''}
           ${mine ? '' : `<button class="link center report" id="report">${icon('flag', 'sm')} Pranešti apie skelbimą</button>`}
         </div>
       </div>
-    </div>`;
+    </div>
+    ${!mine && action.includes('id="adopt"') ? `<div class="adopt-bar only-mobile">${action.match(/<button[^>]*id="adopt"[^>]*>[^<]*<\/button>/)[0].replace('id="adopt"', 'data-adopt')}</div>` : ''}`;
 
   bindHearts(box);
   $$('[data-back]', box).forEach(b => b.onclick = () => back(''));
@@ -89,8 +91,7 @@ export async function render(box, id) {
   $$('.thumb', box).forEach(t => t.onclick = () => { slides.scrollTo({ left: slides.clientWidth * t.dataset.i, behavior: 'smooth' }); setDot(Number(t.dataset.i)); });
   $$('.slide', box).forEach(s => s.onclick = () => lightbox(photos, Number(s.dataset.i)));
   $('#share', box).onclick = () => share(p);
-  const adopt = $('#adopt', box);
-  if (adopt) adopt.onclick = () => { if (requireLogin('Prisijunk, kad galėtum išsiųsti užklausą')) go(`gyvunas/${p.id}/uzklausa`); };
+  $$('[data-adopt]', box).forEach(b => b.onclick = () => { if (requireLogin('Prisijunk, kad galėtum išsiųsti užklausą')) go(`gyvunas/${p.id}/uzklausa`); });
   const rep = $('#report', box);
   if (rep) rep.onclick = () => { if (requireLogin('Prisijunk, kad galėtum pranešti')) reportSheet(p); };
 }
@@ -198,4 +199,4 @@ export async function renderSaved(box) {
     b.closest('.list-item').remove();
     toast('Pašalinta iš išsaugotų');
   }));
-}
+}

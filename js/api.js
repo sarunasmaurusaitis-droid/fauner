@@ -1,6 +1,6 @@
 // Duomenų sluoksnis. Jei config.js užpildytas – naudojama Supabase duomenų bazė,
 // jei ne – demonstracinis režimas (duomenys saugomi tik šioje naršyklėje).
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=11';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js?v=12';
 
 export const DEMO = !SUPABASE_URL || !SUPABASE_ANON_KEY;
 
@@ -8,7 +8,7 @@ const OWNER = 'owner:profiles!pets_owner_id_fkey(id,name,role,shelter_name,verif
 const PET_SELECT = `*, ${OWNER}`;
 const REQ_SELECT = `*, pet:pets(${PET_SELECT}), seeker:profiles!requests_seeker_id_fkey(id,name,city,avatar_url)`;
 
-import { compressImage } from './image.js?v=11';
+import { compressImage } from './image.js?v=12';
 export { compressImage };
 
 function check({ data, error }) {
@@ -177,4 +177,4 @@ async function createSupabaseApi() {
   return api;
 }
 
-export const api = DEMO ? (await import('./demo.js?v=11')).createDemoApi() : await createSupabaseApi();
+export const api = DEMO ? (await import('./demo.js?v=12')).createDemoApi() : await createSupabaseApi();

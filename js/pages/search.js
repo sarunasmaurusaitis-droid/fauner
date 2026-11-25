@@ -1,8 +1,8 @@
 // Paieška ir filtrai (filtrai saugomi nuorodoje, todėl jais galima pasidalinti)
-import { api } from '../api.js?v=11';
-import { esc, $, $$, icon, petCard, bindHearts, ageMonths, plural } from '../app.js?v=11';
-import { CITIES, BREEDS, SPECIES, SPECIES_PLURAL, EYE_COLORS, FUR_COLORS, ANIMAL_HEIGHT, FUR_TYPE, EAR_TYPE } from '../data.js?v=11';
-import { combo, dualRange } from '../ui.js?v=11';
+import { api } from '../api.js?v=12';
+import { esc, $, $$, icon, petCard, bindHearts, ageMonths, plural } from '../app.js?v=12';
+import { CITIES, BREEDS, SPECIES, SPECIES_PLURAL, EYE_COLORS, FUR_COLORS, ANIMAL_HEIGHT, FUR_TYPE, EAR_TYPE } from '../data.js?v=12';
+import { combo, dualRange } from '../ui.js?v=12';
 
 const QUICK = [['', 'Visi'], ...SPECIES.map(s => [s, SPECIES_PLURAL[s]])];
 const TRAIT_SPECIES = ['Šuo', 'Katė'];
@@ -23,6 +23,7 @@ const DEF = () => ({
   ageFrom: 0,
   ageTo: AGE_MAX,
   reserved: true,
+  found: false,
   verified: false,
   sort: 'new'
 });
@@ -37,7 +38,7 @@ function readUrl() {
   if (q.get('veisle')) F.breeds = q.get('veisle').split('|');
   if (q.get('akys')) F.eyeColors = q.get('akys').split('|');
   if (q.get('kailio_spalva')) F.furColors = q.get('kailio_spalva').split('|');
-  if (q.get('ugis')) F.heights = q.get('ugis').split('|');
+  if (q.get('dydis')) F.heights = q.get('dydis').split('|');
   if (q.get('kailio_tipas')) F.furTypes = q.get('kailio_tipas').split('|');
   if (q.get('ausys')) F.earTypes = q.get('ausys').split('|');
   if (q.get('miestas')) F.cities = q.get('miestas').split('|');
@@ -48,8 +49,9 @@ function readUrl() {
     if (b >= 0) F.ageTo = b;
   }
   if (q.get('rezervuoti') === '0') F.reserved = false;
+  if (q.get('rado') === '1') F.found = true;
   if (q.get('patvirtintos') === '1') F.verified = true;
-  if (q.get('rikiuoti') === 'jauniausi') F.sort = 'young';
+  F.sort = { jauniausi: 'young', seniausi: 'old', vyriausi: 'eldest' }[q.get('rikiuoti')] || 'new';
   if (F.eyeColors.length || F.furColors.length || F.heights.length || F.furTypes.length || F.earTypes.length) {
     F.moreFilters = true;
   }
@@ -65,15 +67,16 @@ function writeUrl(F) {
   if (F.breeds.length) q.set('veisle', F.breeds.join('|'));
   if (F.eyeColors.length) q.set('akys', F.eyeColors.join('|'));
   if (F.furColors.length) q.set('kailio_spalva', F.furColors.join('|'));
-  if (F.heights.length) q.set('ugis', F.heights.join('|'));
+  if (F.heights.length) q.set('dydis', F.heights.join('|'));
   if (F.furTypes.length) q.set('kailio_tipas', F.furTypes.join('|'));
   if (F.earTypes.length) q.set('ausys', F.earTypes.join('|'));
   if (F.cities.length) q.set('miestas', F.cities.join('|'));
   if (F.sex) q.set('lytis', F.sex);
   if (F.ageFrom > 0 || F.ageTo < AGE_MAX) q.set('amzius', `${F.ageFrom}-${F.ageTo}`);
   if (!F.reserved) q.set('rezervuoti', '0');
+  if (F.found) q.set('rado', '1');
   if (F.verified) q.set('patvirtintos', '1');
-  if (F.sort === 'young') q.set('rikiuoti', 'jauniausi');
+  if (F.sort !== 'new') q.set('rikiuoti', { young: 'jauniausi', old: 'seniausi', eldest: 'vyriausi' }[F.sort]);
   const s = q.toString();
   history.replaceState(null, '', '#/' + (s ? '?' + s : ''));
 }
@@ -94,8 +97,8 @@ function apply(pets, F) {
   const checkTraits = traitsAllowedForSpecies(F.species) && F.moreFilters;
   const out = pets.filter(p => {
     const years = ageMonths(p.birth_date) / 12;
-    return p.status !== 'Rado namus' &&
-      (F.reserved || p.status === 'Laukia namų') &&
+    return (F.found || p.status !== 'Rado namus') &&
+      (F.reserved || p.status !== 'Rezervuotas') &&
       (!q || [
         p.name, p.city, p.species, p.breed, p.mixed ? 'mišrūnas' : '', p.description,
         ...(p.traits || []), ...(p.eye_color || []), ...(p.fur_color || []),
@@ -117,6 +120,8 @@ function apply(pets, F) {
       (!F.verified || (p.owner?.role === 'shelter' && p.owner?.verified));
   });
   if (F.sort === 'young') out.sort((a, b) => b.birth_date.localeCompare(a.birth_date));
+  if (F.sort === 'eldest') out.sort((a, b) => a.birth_date.localeCompare(b.birth_date));
+  if (F.sort === 'old') out.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
   return out;
 }
 
@@ -155,7 +160,7 @@ export async function render(box) {
         <div id="mutt-box" hidden>
           <label class="f-label">Akių spalvos</label><div id="eye-color"></div>
           <label class="f-label">Kailio spalva(-os)</label><div id="fur-color"></div>
-          <label class="f-label">Ūgis</label><div id="animal-height"></div>
+          <label class="f-label">Dydis</label><div id="animal-height"></div>
           <label class="f-label">Kailio tipas</label><div id="fur-type"></div>
           <label class="f-label">Ausys</label><div id="ear-type"></div>
         </div>
@@ -163,6 +168,7 @@ export async function render(box) {
         <label class="f-label">Lytis</label>
         <div class="pills" id="sex">${['', 'Patinas', 'Patelė'].map(v => `<button type="button" class="pill ${F.sex === v ? 'on' : ''}" data-v="${v}">${v || 'Bet kokia'}</button>`).join('')}</div>
         <label class="switch"><span>Rodyti rezervuotus</span><input type="checkbox" id="res" ${F.reserved ? 'checked' : ''}><i></i></label>
+        <label class="switch"><span>Rodyti radusius namus</span><input type="checkbox" id="found" ${F.found ? 'checked' : ''}><i></i></label>
         <label class="switch"><span>Tik patvirtintos prieglaudos</span><input type="checkbox" id="ver" ${F.verified ? 'checked' : ''}><i></i></label>
         <button type="button" class="btn primary block only-mobile" data-show>Rodyti</button>
       </aside>
@@ -177,8 +183,10 @@ export async function render(box) {
         <div class="row between result-head">
           <b id="count"></b>
           <select id="sort" class="select-plain" aria-label="Rikiuoti">
-            <option value="new">Naujausi</option>
-            <option value="young">Jauniausi</option>
+            <option value="new">Naujausi skelbimai</option>
+            <option value="old">Seniausi skelbimai</option>
+            <option value="young">Jauniausi gyvūnai</option>
+            <option value="eldest">Vyriausi gyvūnai</option>
           </select>
         </div>
         <div class="grid" id="grid"></div>
@@ -264,7 +272,7 @@ export async function render(box) {
 
     const n = F.breeds.length + F.cities.length + (F.mixedOnly ? 1 : 0) + (F.moreFilters ? 1 : 0) +
       F.eyeColors.length + F.furColors.length + F.heights.length + F.furTypes.length + F.earTypes.length +
-      (F.sex ? 1 : 0) + (F.ageFrom > 0 || F.ageTo < AGE_MAX ? 1 : 0) + (!F.reserved) + F.verified;
+      (F.sex ? 1 : 0) + (F.ageFrom > 0 || F.ageTo < AGE_MAX ? 1 : 0) + (!F.reserved) + F.found + F.verified;
     const badge = $('#fcount', box);
     badge.hidden = !n;
     badge.textContent = n;
@@ -287,6 +295,7 @@ export async function render(box) {
     $('#age-lbl', box).textContent = ageLabel(0, AGE_MAX);
     $$('#sex .pill', box).forEach(b => b.classList.toggle('on', b.dataset.v === ''));
     $('#res', box).checked = true;
+    $('#found', box).checked = false;
     $('#ver', box).checked = false;
     $('#sort', box).value = 'new';
     draw();
@@ -301,6 +310,7 @@ export async function render(box) {
   $('#more', box).onchange = e => { setMoreFilters(e.target.checked); draw(); };
   $('#res', box).onchange = e => { F.reserved = e.target.checked; draw(); };
   $('#ver', box).onchange = e => { F.verified = e.target.checked; draw(); };
+  $('#found', box).onchange = e => { F.found = e.target.checked; draw(); };
   $$('[data-clear]', filters).forEach(b => (b.onclick = clear));
   $('[data-show]', filters).onclick = () => filters.classList.remove('open');
   $('[data-close]', filters).onclick = () => filters.classList.remove('open');
@@ -318,4 +328,4 @@ export async function render(box) {
   }));
   $('#open-filters', box).onclick = () => filters.classList.add('open');
   draw();
-}
+}

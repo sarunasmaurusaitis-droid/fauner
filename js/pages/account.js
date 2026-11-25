@@ -1,8 +1,8 @@
 // Paskyra: prisijungimas, registracija (18+), Google/Facebook, slaptažodžio atkūrimas, profilis, prieglaudos paraiška
-import { api, DEMO } from '../api.js?v=11';
-import { esc, $, $$, icon, go, toast, confirmDialog, requireLogin, initial, isAdmin } from '../app.js?v=11';
-import { CITIES } from '../data.js?v=11';
-import { combo } from '../ui.js?v=11';
+import { api, DEMO } from '../api.js?v=12';
+import { esc, $, $$, icon, go, toast, confirmDialog, requireLogin, initial, isAdmin } from '../app.js?v=12';
+import { CITIES } from '../data.js?v=12';
+import { combo } from '../ui.js?v=12';
 
 const ROLE_NAME = { user: 'Vartotojas', shelter: 'Prieglauda', admin: 'Administratorius' };
 const HERO = 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=900&q=80';
@@ -79,6 +79,7 @@ export async function renderRegister(box) {
       <label>Pakartok slaptažodį<input class="input" type="password" name="password2" required autocomplete="new-password"></label>
       <label>Gimimo data<input class="input" type="date" name="birth_date" required max="${maxBirth()}"><span class="hint">Fauner gali naudotis tik pilnamečiai. Gimimo data niekam nerodoma.</span></label>
       <label>Miestas ar rajonas</label><div id="city"></div>
+      <div class="notice small">Saugom tik tai, ko reikia: vardą, el. paštą, miestą ir gimimo datą (tik 18+ patikrai, niekam nerodoma). Žinutes mato tik pokalbio dalyviai. Paskyrą gali ištrinti bet kada.</div>
       <label class="check"><input type="checkbox" name="rules" required> Sutinku su <a class="link" href="#/taisykles" target="_blank">Fauner taisyklėmis</a> ir <a class="link" href="#/privatumas" target="_blank">privatumo politika</a></label>
       <button class="btn primary block" type="submit">Sukurti paskyrą</button>
       <p class="center sub">Jau turi paskyrą? <a class="link" href="#/prisijungti">Prisijunk</a></p>

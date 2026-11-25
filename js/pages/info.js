@@ -1,6 +1,6 @@
 // Informaciniai puslapiai: Apie Fauner + DUK, taisyklės, privatumo politika, kontaktai, pirmo apsilankymo gidas
-import { esc, $, $$, icon, go } from '../app.js?v=11';
-import { CONTACT_EMAIL } from '../config.js?v=11';
+import { esc, $, $$, icon, go } from '../app.js?v=12';
+import { CONTACT_EMAIL } from '../config.js?v=12';
 
 const UPDATED = '2026-11-03';
 const email = () => CONTACT_EMAIL ? `<a class="link" href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>` : 'per skiltį „Kontaktai“';
@@ -108,6 +108,7 @@ export async function renderPrivacy(box) {
     <article class="doc">
       <h1>Privatumo politika</h1>
       <p class="sub">Atnaujinta ${UPDATED}</p>
+      <div class="notice"><b>Trumpai.</b> Renkam tik tai, ko reikia naudotis Fauner. Gimimo data reikalinga tik 18+ patikrai ir niekam nerodoma. Užklausas ir žinutes mato tik pokalbio dalyviai. Duomenų neparduodam ir nerodom reklamos. Paskyrą su visais duomenimis gali ištrinti profilyje. Klausimai: ${email()}.</div>
       <h2>1. Kas tvarko duomenis</h2>
       <p>Asmens duomenis tvarko Fauner projekto komanda (KTU, grupė 01-2), laikydamasi Bendrojo duomenų apsaugos reglamento (BDAR). Kontaktai: ${email()}.</p>
       <h2>2. Kokius duomenis renkame ir kodėl</h2>

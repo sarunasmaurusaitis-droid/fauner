@@ -1,10 +1,10 @@
 // Skelbimai: skydelis / mano skelbimai, naujo skelbimo forma (4 žingsniai), redagavimas (vienas puslapis), kandidatai
-import { api } from '../api.js?v=11';
+import { api } from '../api.js?v=12';
 import { esc, $, $$, icon, go, back, toast, ageText, ageMonths, birthFrom, breedText, statusChip, photo, requireLogin,
-  confirmDialog, timeAgo, initial, isAdmin, plural } from '../app.js?v=11';
-import { reqChip, requestDetailsHtml } from './requests.js?v=11';
-import { CITIES, BREEDS, SPECIES, TRAITS, HEALTH, UNKNOWN_BREED, PHONE_RE, saleWords, EYE_COLORS, FUR_COLORS, ANIMAL_HEIGHT, FUR_TYPE, EAR_TYPE } from '../data.js?v=11';
-import { combo } from '../ui.js?v=11';
+  confirmDialog, timeAgo, initial, isAdmin, plural } from '../app.js?v=12';
+import { reqChip, requestDetailsHtml } from './requests.js?v=12';
+import { CITIES, BREEDS, SPECIES, TRAITS, HEALTH, UNKNOWN_BREED, PHONE_RE, saleWords, EYE_COLORS, FUR_COLORS, ANIMAL_HEIGHT, FUR_TYPE, EAR_TYPE } from '../data.js?v=12';
+import { combo } from '../ui.js?v=12';
 
 const STATUSES = ['Laukia namų', 'Rezervuotas', 'Rado namus'];
 const stClass = s => s === 'Laukia namų' ? 'st-wait' : s === 'Rezervuotas' ? 'st-res' : 'st-home';
@@ -13,7 +13,7 @@ export async function renderMine(box) {
   if (!requireLogin('Prisijunk, kad matytum savo skelbimus')) return;
   const u = api.user;
   const shelter = u.role === 'shelter';
-  const [pets, reqs] = await Promise.all([api.myPets(), api.incomingRequests()]);
+  const [pets, reqs, mineReqs] = await Promise.all([api.myPets(), api.incomingRequests(), shelter ? [] : api.myRequests()]);
   const fresh = id => reqs.filter(r => r.pet_id === id && r.status === 'Išsiųsta').length;
   const total = id => reqs.filter(r => r.pet_id === id && !['Atmesta', 'Atšaukta'].includes(r.status)).length;
   const monthAgo = new Date(Date.now() - 30 * 864e5).toISOString();
@@ -34,7 +34,15 @@ export async function renderMine(box) {
     <div class="tabs-seg"><button class="on" data-t="active">Aktyvūs (${pets.filter(p => !p.archived).length})</button><button data-t="archive">Archyvas (${pets.filter(p => p.archived).length})</button></div>
     <div id="list"></div>
     <div class="row between"><h2>Gautos užklausos</h2>${reqs.length > 5 ? '<button class="link" id="all-req">Rodyti visas</button>' : ''}</div>
-    <div class="list" id="reqs"></div>`;
+    <div class="list" id="reqs"></div>
+    ${shelter ? '' : `<h2>Gyvūnai, kuriuos noriu priglausti</h2>
+    <p class="sub small">Čia tavo išsiųstos užklausos. Viršuje – gyvūnai, kuriuos pats atiduodi.</p>
+    <div class="list">${mineReqs.filter(r => r.status !== 'Atšaukta').map(r => `
+      <a class="list-item" href="#/zinutes/${r.id}">
+        <img class="round" src="${esc(photo(r.pet))}" alt="">
+        <div class="grow"><b>${esc(r.pet.name)}, ${ageText(r.pet.birth_date)}</b><span class="sub">${r.pet.owner?.role === 'shelter' ? 'Prieglauda' : 'Globėjas'}: ${esc(r.pet.owner?.shelter_name || r.pet.owner?.name || '')}</span></div>
+        ${r.status === 'Pasirinktas' && r.pet.status === 'Rado namus' ? '<span class="chip st-home">Priglaudei</span>' : r.status === 'Pasirinktas' ? '<span class="chip st-res">Rezervuota tau</span>' : reqChip(r.status, r.queued)}
+      </a>`).join('') || '<p class="sub">Užklausų dar nesiuntei.</p>'}</div>`}`;
 
   function drawReqs(all) {
     const list = reqs.slice().reverse().slice(0, all ? undefined : 5);
@@ -143,9 +151,10 @@ const sections = {
     <div id="mutt-wrap" ${allowsMutt(pet) ? '' : 'hidden'}>
       <label class="check"><input type="checkbox" name="mixed" ${pet.mixed ? 'checked' : ''}> Mišrūnas</label>
       <div id="mutt-section">
+        <h3>Išvaizda ir dydis <span class="opt">(privaloma – pagal tai ieško filtrai)</span></h3>
         <label>Akių spalvos <span class="req">*</span></label>${pillGroup('eye_color', EYE_COLORS, pet.eye_color || [], true)}
         <label>Kailio spalva(-os) <span class="req">*</span></label>${pillGroup('fur_color', FUR_COLORS, pet.fur_color || [], true)}
-        <label>Ūgis <span class="req">*</span></label>${pillGroup('height', ANIMAL_HEIGHT, pet.height || [], true)}
+        <label>Dydis <span class="req">*</span></label>${pillGroup('height', ANIMAL_HEIGHT, pet.height || [], true)}
         <label>Kailio tipas <span class="req">*</span></label>${pillGroup('fur_type', FUR_TYPE, pet.fur_type || [], true)}
         <label>Ausys <span class="req">*</span></label>${pillGroup('ear_type', EAR_TYPE, pet.ear_type || [], true)}
       </div>
@@ -172,9 +181,26 @@ function bindPhotos(root, pet, redraw) {
   const file = $('[data-file]', root);
   if (file) file.onchange = async () => {
     const files = [...file.files].slice(0, 5 - pet.photos.length);
-    $('#up-status', root).textContent = `Įkeliama ${files.length} nuotr.…`;
-    try { for (const f of files) pet.photos.push(await api.uploadPhoto(f)); redraw(); }
-    catch (e) { $('#up-status', root).textContent = ''; toast('Nepavyko įkelti nuotraukos: ' + e.message, 'err'); }
+    file.value = '';
+    const st = $('#up-status', root), up = $('.upload', root);
+    const bad = files.filter(f => !f.type.startsWith('image/'));
+    if (bad.length) { st.innerHTML = `<span class="danger-text">${esc(bad[0].name)} – ne nuotrauka. Rinkis JPG, PNG ar HEIC.</span>`; return; }
+    up?.classList.add('busy');
+    let done = 0;
+    const show = () => { st.innerHTML = `<span class="spinner"></span> Įkeliama ${done + 1} iš ${files.length}…`; };
+    try {
+      for (const f of files) {
+        show();
+        const url = await Promise.race([api.uploadPhoto(f), new Promise((_, rej) => setTimeout(() => rej(new Error('per ilgai užtruko')), 45000))]);
+        pet.photos.push(url); done++;
+      }
+      redraw(); toast(files.length > 1 ? 'Nuotraukos įkeltos' : 'Nuotrauka įkelta');
+    } catch (e) {
+      if (done) redraw();
+      const st2 = $('#up-status', root);
+      st2.innerHTML = `<span class="danger-text">Nepavyko įkelti nuotraukos (${esc(e.message)}).</span> <button type="button" class="link" data-retry>Bandyti dar kartą</button>`;
+      $('[data-retry]', st2).onclick = () => $('[data-file]', root)?.click();
+    } finally { $('.upload', root)?.classList.remove('busy'); }
   };
   const swap = (i, j) => { [pet.photos[i], pet.photos[j]] = [pet.photos[j], pet.photos[i]]; redraw(); };
   $$('[data-rm]', root).forEach(b => b.onclick = () => { pet.photos.splice(Number(b.dataset.rm), 1); redraw(); });
@@ -250,7 +276,7 @@ function validate(pet, step) {
     if (allowsMutt(pet)) {
       if (!pet.eye_color?.length) return 'Pasirink bent vieną akių spalvą';
       if (!pet.fur_color?.length) return 'Pasirink bent vieną kailio spalvą';
-      if (!pet.height?.length) return 'Pasirink ūgį';
+      if (!pet.height?.length) return 'Pasirink dydį';
       if (!pet.fur_type?.length) return 'Pasirink kailio tipą';
       if (!pet.ear_type?.length) return 'Pasirink ausų tipą';
     }

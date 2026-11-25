@@ -1,12 +1,12 @@
 // Fauner – maršrutizatorius, išdėstymas ir bendros pagalbinės funkcijos
-import { api, DEMO } from './api.js?v=11';
-import * as search from './pages/search.js?v=11';
-import * as pet from './pages/pet.js?v=11';
-import * as requests from './pages/requests.js?v=11';
-import * as listings from './pages/listings.js?v=11';
-import * as admin from './pages/admin.js?v=11';
-import * as account from './pages/account.js?v=11';
-import * as info from './pages/info.js?v=11';
+import { api, DEMO } from './api.js?v=12';
+import * as search from './pages/search.js?v=12';
+import * as pet from './pages/pet.js?v=12';
+import * as requests from './pages/requests.js?v=12';
+import * as listings from './pages/listings.js?v=12';
+import * as admin from './pages/admin.js?v=12';
+import * as account from './pages/account.js?v=12';
+import * as info from './pages/info.js?v=12';
 
 // ---------- Pagalbinės funkcijos ----------
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -64,6 +64,7 @@ export const birthFrom = (years, months) => {
 };
 export const breedText = p => p.mixed ? (p.breed ? `${p.breed} (mišrūnas)` : 'Mišrūnas') : (p.breed || '');
 
+export const avatarHtml = (name, url, cls = '') => url ? `<img class="avatar ${cls}" src="${esc(url)}" alt="">` : `<span class="avatar ${cls}">${esc(initial(name))}</span>`;
 export const initial = s => (String(s || '?').replace(/^(VšĮ|UAB|MB|Všį)\s*/i, '').replace(/[^\p{L}]/gu, '')[0] || '?').toUpperCase();
 export const ownerName = p => p.owner ? (p.owner.shelter_name || p.owner.name) : (p.org_name || 'Fauner');
 export const isVerified = p => !!(p.owner && p.owner.role === 'shelter' && p.owner.verified);
@@ -201,7 +202,7 @@ function renderShell(path) {
   $('#top').innerHTML = `
     <a class="logo" href="#/">fauner</a>
     <nav class="topnav">${items.filter(i => !['profilis', 'prisijungti'].includes(i[0])).map(link).join('')}</nav>
-    ${u ? `<a class="me-chip" href="#/profilis"><span class="avatar">${esc(initial(u.shelter_name || u.name))}</span><span>${esc(u.shelter_name || u.name || u.email)}</span></a>`
+    ${u ? `<a class="me-chip" href="#/profilis">${avatarHtml(u.shelter_name || u.name, u.avatar_url)}<span>${esc(u.shelter_name || u.name || u.email)}</span></a>`
       : `<a class="btn primary sm hide-mobile" href="#/prisijungti">Prisijungti</a>`}`;
   $('#tabs').innerHTML = items.map(link).join('');
   $('#demo').hidden = !DEMO;

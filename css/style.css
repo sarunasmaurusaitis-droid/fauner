@@ -508,3 +508,16 @@ label.check input { position: absolute; left: 0; top: 0; margin: 0; }
 .request-sent-info { margin: 8px 0; }
 .request-sent-info summary { cursor: pointer; }
 .request-sent-info .request-answer { margin-bottom: 0; }
+
+/* W13 pataisymai */
+.adopt-bar { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 15; padding: 10px 16px; background: linear-gradient(transparent, #fff 35%); }
+@media (max-width: 899px) { .actions [data-adopt] { display: none; } .main:has(.adopt-bar) { padding-bottom: 180px; } }
+.adopt-bar .btn { box-shadow: 0 6px 18px rgba(255, 107, 53, .3); }
+.pet-av { position: relative; flex: none; display: inline-block; }
+.pet-av > img.round { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; display: block; }
+.pet-av .avatar.corner { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; font-size: 11px; border: 2px solid #fff; }
+.chat-head .pet-av .avatar.corner { width: 24px; height: 24px; }
+.upload.busy { opacity: .5; pointer-events: none; }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--pri); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -1px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.notice.small { font-size: 13px; }
